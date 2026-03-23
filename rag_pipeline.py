@@ -11,11 +11,11 @@ vectorstore = Chroma(
     persist_directory="./chroma_db",
     embedding_function=embeddings
 )
-llm = OllamaLLM(model="llama3.2:3b", num_gpu=20)
+llm = OllamaLLM(model="mistral:7b", num_gpu=20, temperature=0.0, num_ctx=4096)
 
 def ask(question: str) -> str:
     # 1. Récupère les chunks pertinents
-    chunks = vectorstore.similarity_search(question, k=3)
+    chunks = vectorstore.similarity_search(question, k=50)
     context = "\n\n".join([c.page_content for c in chunks])
     
     # 2. Construit le prompt
@@ -32,11 +32,11 @@ Answer:"""
     return llm.invoke(prompt)
 
 if __name__ == "__main__":
-    question = "Can I play a sorcery during an opponent's turn?"
+    question = "Can I cast sorceries during combat phase ?"
     print(f"Q: {question}")
     
     print("🔍 Recherche des chunks pertinents...")
-    chunks = vectorstore.similarity_search(question, k=3)
+    chunks = vectorstore.similarity_search(question, k=30)
     print(f"✅ {len(chunks)} chunks trouvés")
     
     for i, chunk in enumerate(chunks):

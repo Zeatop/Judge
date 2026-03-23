@@ -4,3 +4,4 @@ langchain-chroma
 langchain-huggingface
 langchain-ollama
 sentence-transformers
+pypdf
