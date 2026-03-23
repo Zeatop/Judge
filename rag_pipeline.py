@@ -11,7 +11,7 @@ vectorstore = Chroma(
     persist_directory="./chroma_db",
     embedding_function=embeddings
 )
-llm = OllamaLLM(model="mistral:7b", num_gpu=20)
+llm = OllamaLLM(model="llama3.2:3b", num_gpu=20)
 
 def ask(question: str) -> str:
     # 1. Récupère les chunks pertinents
