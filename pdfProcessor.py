@@ -1,11 +1,14 @@
 import re
 from langchain_text_splitters import RecursiveCharacterTextSplitter as rs
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_core.documents import Document
+
 
 class PDFProcessor:
 
-    def __init__(self, file_path, is_mtg_rules=False):
+    def __init__(self, file_path, game_id, is_mtg_rules=False):
         self.file_path = file_path
+        self.game_id = game_id
         self.is_mtg_rules = is_mtg_rules
 
     def extract_text(self):
@@ -23,7 +26,11 @@ class PDFProcessor:
             chunk_overlap=100,
             separators=["\n\n", "\n", ". ", " "]
         )
-        return splitter.split_documents(documents)
+        chunks = splitter.split_documents(documents)
+        # Tag chaque chunk avec le game_id
+        for chunk in chunks:
+            chunk.metadata["game_id"] = self.game_id
+        return chunks
 
     def _split_mtg(self, documents):
         filtered = [doc for doc in documents if doc.metadata.get("page", 0) >= 4]
@@ -43,8 +50,7 @@ class PDFProcessor:
                 grouped.append(group)
         
         # Recrée des Documents LangChain
-        from langchain_core.documents import Document
-        return [Document(page_content=chunk, metadata={"game_id": "mtg"}) for chunk in grouped]
+        return [Document(page_content=chunk, metadata={"game_id": self.game_id}) for chunk in grouped]
 
     def process_pdf(self):
         documents = self.extract_text()
