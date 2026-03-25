@@ -5,3 +5,6 @@ langchain-huggingface
 langchain-ollama
 sentence-transformers
 pypdf
+fastapi 
+uvicorn 
+python-multipart
