@@ -6,10 +6,9 @@ from langchain_core.documents import Document
 
 class PDFProcessor:
 
-    def __init__(self, file_path, game_id, is_mtg_rules=False):
+    def __init__(self, file_path, game_id):
         self.file_path = file_path
         self.game_id = game_id
-        self.is_mtg_rules = is_mtg_rules
 
     def extract_text(self):
         loader = PyPDFLoader(self.file_path)
@@ -18,7 +17,7 @@ class PDFProcessor:
         return documents
 
     def split_text(self, documents):
-        if self.is_mtg_rules:
+        if self.game_id == "mtg":
             return self._split_mtg(documents)
         
         splitter = rs(
@@ -56,12 +55,3 @@ class PDFProcessor:
         documents = self.extract_text()
         split_documents = self.split_text(documents)
         return split_documents
-    
-PDF_processor = PDFProcessor("./rules/Magic the gathering/rulebook.pdf", is_mtg_rules=True)
-processed_docs = PDF_processor.process_pdf()
-print(f"Processed {len(processed_docs)} documents.")
-print("\n--- APERÇU DES CHUNKS ---")
-for i, doc in enumerate(processed_docs[:20]):
-    print(f"\n[Chunk {i+1}] ({len(doc.page_content)} chars) - page {doc.metadata.get('page', '?')}")
-    print(doc.page_content)
-    print("-" * 50)
