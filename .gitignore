@@ -1,2 +1,6 @@
 env
 env/*
+rules
+rules/*
+test_model
+test_model/*
