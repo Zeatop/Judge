@@ -1,7 +1,9 @@
 # api.py
 """
 API FastAPI pour le RAG de règles de jeux.
-Intègre l'API Scryfall pour récupérer le texte des cartes MTG via la syntaxe [[card name]].
+Intègre l'API Scryfall pour récupérer le texte des cartes MTG + rulings via la syntaxe [[card name]].
+Supporte Ollama (local) et Claude (API Anthropic) via LLM_PROVIDER.
+
 Usage :
     uvicorn api:app --reload
     → Swagger dispo sur http://localhost:8000/docs
@@ -17,18 +19,23 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from pydantic import BaseModel
 from db import vectorstore
 from pdfProcessor import PDFProcessor
-from langchain_ollama import OllamaLLM
+from llm_provider import get_provider
 
 # ── App ─────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Board Game Rules RAG",
     description="Pose des questions sur les règles de jeux de société. "
-                "Pour MTG, utilise [[nom de carte]] pour inclure le texte Oracle.",
-    version="1.1.0",
+                "Pour MTG, utilise [[nom de carte]] pour inclure le texte Oracle + rulings.",
+    version="2.1.0",
 )
 
-# ── LLM (chargé une seule fois au démarrage) ───────────────────────
-llm = OllamaLLM(model="mistral:7b", temperature=0.0, num_ctx=4096)
+# ── LLM ─────────────────────────────────────────────────────────────
+from var import LLM_MODEL
+llm_kwargs = {}
+if LLM_MODEL:
+    llm_kwargs["model"] = LLM_MODEL
+
+llm = get_provider(**llm_kwargs)
 
 # ── Dossier d'upload ────────────────────────────────────────────────
 UPLOAD_DIR = "./rules/uploads"
@@ -47,82 +54,10 @@ SCRYFALL_NAMED_URL = "https://api.scryfall.com/cards/named"
 SCRYFALL_DELAY = 0.1  # 100ms entre chaque requête (respect des rate limits)
 CARD_PATTERN = re.compile(r"\[\[(.+?)\]\]")
 
-
-def fetch_card(card_name: str) -> dict | None:
-    """
-    Récupère une carte depuis Scryfall via fuzzy search.
-    Retourne un dict avec name, mana_cost, type_line, oracle_text, etc.
-    Retourne None si la carte n'est pas trouvée.
-    """
-    try:
-        resp = httpx.get(
-            SCRYFALL_NAMED_URL,
-            params={"fuzzy": card_name},
-            headers={"User-Agent": "BoardGameRAG/1.0", "Accept": "application/json"},
-            timeout=10.0,
-        )
-        if resp.status_code == 200:
-            return resp.json()
-        return None
-    except httpx.RequestError:
-        return None
-
-
-def format_card_text(card: dict) -> str:
-    """Formate les infos d'une carte pour injection dans le contexte."""
-    name = card.get("name", "Unknown")
-    mana_cost = card.get("mana_cost", "")
-    type_line = card.get("type_line", "")
-    oracle_text = card.get("oracle_text", "")
-    power = card.get("power")
-    toughness = card.get("toughness")
-    loyalty = card.get("loyalty")
-
-    # Cartes double-face : concaténer les deux faces
-    if not oracle_text and "card_faces" in card:
-        faces = card["card_faces"]
-        parts = []
-        for face in faces:
-            face_text = (
-                f"{face.get('name', '')} {face.get('mana_cost', '')}\n"
-                f"{face.get('type_line', '')}\n"
-                f"{face.get('oracle_text', '')}"
-            )
-            if face.get("power"):
-                face_text += f"\n{face['power']}/{face['toughness']}"
-            parts.append(face_text)
-        return f"[CARD: {name}]\n" + "\n---\n".join(parts)
-
-    text = f"[CARD: {name}] {mana_cost}\n{type_line}\n{oracle_text}"
-    if power and toughness:
-        text += f"\n{power}/{toughness}"
-    if loyalty:
-        text += f"\nLoyalty: {loyalty}"
-    return text
-
-
-def extract_and_fetch_cards(question: str) -> tuple[str, list[str]]:
-    """
-    Extrait les [[card name]] de la question, les récupère sur Scryfall,
-    et retourne (question nettoyée, liste de textes de cartes).
-    """
-    matches = CARD_PATTERN.findall(question)
-    if not matches:
-        return question, []
-
-    card_texts = []
-    for card_name in matches:
-        card = fetch_card(card_name.strip())
-        if card:
-            card_texts.append(format_card_text(card))
-        else:
-            card_texts.append(f"[CARD NOT FOUND: {card_name}]")
-        time.sleep(SCRYFALL_DELAY)
-
-    # Nettoie la question (retire les [[ ]])
-    clean_question = CARD_PATTERN.sub(lambda m: m.group(1), question)
-    return clean_question, card_texts
-
+SCRYFALL_HEADERS = {
+    "User-Agent": "BoardGameRAG/2.1",
+    "Accept": "application/json",
+}
 
 # ── Schemas ─────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
@@ -146,12 +81,23 @@ class AskRequest(BaseModel):
     }
 
 
+class CardInfo(BaseModel):
+    """Infos d'une carte MTG pour le frontend."""
+    name: str
+    mana_cost: str
+    type_line: str
+    oracle_text: str
+    image_url: str | None = None
+    scryfall_url: str | None = None
+    rulings: list[str] = []
+
+
 class AskResponse(BaseModel):
     question: str
     game_id: str | None
     answer: str
     chunks_used: int
-    cards_fetched: list[str]
+    cards: list[CardInfo]
 
 
 class UploadResponse(BaseModel):
@@ -159,6 +105,144 @@ class UploadResponse(BaseModel):
     filename: str
     chunks_indexed: int
     total_chunks: int
+
+
+def fetch_card(card_name: str) -> dict | None:
+    """Récupère une carte depuis Scryfall via fuzzy search."""
+    try:
+        resp = httpx.get(
+            SCRYFALL_NAMED_URL,
+            params={"fuzzy": card_name},
+            headers=SCRYFALL_HEADERS,
+            timeout=10.0,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        return None
+    except httpx.RequestError:
+        return None
+
+
+def fetch_rulings(rulings_uri: str) -> list[str]:
+    """
+    Récupère les rulings officiels d'une carte depuis Scryfall.
+    Retourne une liste de textes de rulings, ou [] si aucun.
+    """
+    try:
+        time.sleep(SCRYFALL_DELAY)
+        resp = httpx.get(
+            rulings_uri,
+            headers=SCRYFALL_HEADERS,
+            timeout=10.0,
+        )
+        if resp.status_code != 200:
+            return []
+
+        data = resp.json()
+        rulings = []
+        for entry in data.get("data", []):
+            comment = entry.get("comment", "").strip()
+            if comment:
+                rulings.append(comment)
+        return rulings
+    except httpx.RequestError:
+        return []
+
+
+def format_card_text(card: dict, rulings: list[str] | None = None) -> str:
+    """Formate les infos d'une carte + ses rulings pour injection dans le contexte."""
+    name = card.get("name", "Unknown")
+    mana_cost = card.get("mana_cost", "")
+    type_line = card.get("type_line", "")
+    oracle_text = card.get("oracle_text", "")
+    power = card.get("power")
+    toughness = card.get("toughness")
+    loyalty = card.get("loyalty")
+
+    # Cartes double-face : concaténer les deux faces
+    if not oracle_text and "card_faces" in card:
+        faces = card["card_faces"]
+        parts = []
+        for face in faces:
+            face_text = (
+                f"{face.get('name', '')} {face.get('mana_cost', '')}\n"
+                f"{face.get('type_line', '')}\n"
+                f"{face.get('oracle_text', '')}"
+            )
+            if face.get("power"):
+                face_text += f"\n{face['power']}/{face['toughness']}"
+            parts.append(face_text)
+        text = f"[CARD: {name}]\n" + "\n---\n".join(parts)
+    else:
+        text = f"[CARD: {name}] {mana_cost}\n{type_line}\n{oracle_text}"
+        if power and toughness:
+            text += f"\n{power}/{toughness}"
+        if loyalty:
+            text += f"\nLoyalty: {loyalty}"
+
+    # Ajouter les rulings si disponibles
+    if rulings:
+        text += "\n\n  OFFICIAL RULINGS:"
+        for i, ruling in enumerate(rulings, 1):
+            text += f"\n  {i}. {ruling}"
+
+    return text
+
+
+def extract_and_fetch_cards(question: str) -> tuple[str, list[str], list[CardInfo]]:
+    """
+    Extrait les [[card name]] de la question, les récupère sur Scryfall
+    (avec leurs rulings), et retourne (question nettoyée, textes pour le contexte LLM, infos pour le frontend).
+    """
+    matches = CARD_PATTERN.findall(question)
+    if not matches:
+        return question, [], []
+
+    card_texts = []
+    card_infos = []
+    for card_name in matches:
+        card = fetch_card(card_name.strip())
+        if card:
+            # Récupérer les rulings via rulings_uri
+            rulings = []
+            rulings_uri = card.get("rulings_uri")
+            if rulings_uri:
+                rulings = fetch_rulings(rulings_uri)
+
+            card_texts.append(format_card_text(card, rulings))
+
+            # Construire l'objet CardInfo pour le frontend
+            # Gestion des cartes double-face pour oracle_text
+            oracle = card.get("oracle_text", "")
+            if not oracle and "card_faces" in card:
+                oracle = "\n---\n".join(
+                    face.get("oracle_text", "") for face in card["card_faces"]
+                )
+
+            # Image : priorité à la grande image, fallback sur les faces
+            image_url = None
+            if "image_uris" in card:
+                image_url = card["image_uris"].get("large")
+            elif "card_faces" in card and card["card_faces"]:
+                face_images = card["card_faces"][0].get("image_uris", {})
+                image_url = face_images.get("large")
+
+            card_infos.append(CardInfo(
+                name=card.get("name", "Unknown"),
+                mana_cost=card.get("mana_cost", ""),
+                type_line=card.get("type_line", ""),
+                oracle_text=oracle,
+                image_url=image_url,
+                scryfall_url=card.get("scryfall_uri"),
+                rulings=rulings,
+            ))
+        else:
+            card_texts.append(f"[CARD NOT FOUND: {card_name}]")
+        time.sleep(SCRYFALL_DELAY)
+
+    clean_question = CARD_PATTERN.sub(lambda m: m.group(1), question)
+    return clean_question, card_texts, card_infos
+
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
@@ -172,23 +256,23 @@ def make_chunk_id(game_id: str, index: int, content: str) -> str:
 def ask(req: AskRequest):
     """
     Pose une question sur les règles d'un jeu.
-    Pour MTG, utilise [[nom de carte]] pour inclure automatiquement le texte Oracle.
-    Exemple : "I cast [[Lightning Bolt]] on a [[Tarmogoyf]], does it die?"
+    Pour MTG, utilise [[nom de carte]] pour inclure automatiquement le texte Oracle + rulings.
     """
-    # 1. Extraire et fetch les cartes Scryfall
-    clean_question, card_texts = extract_and_fetch_cards(req.question)
+    # 1. Extraire et fetch les cartes Scryfall (+ rulings)
+    clean_question, card_texts, card_infos = extract_and_fetch_cards(req.question)
 
     # 2. Recherche dans ChromaDB
-    #    On enrichit la requête avec les mots-clés des cartes pour que
-    #    ChromaDB remonte les règles pertinentes (targeting, stack, sacrifice...)
     search_query = clean_question
     if card_texts:
         keywords = []
         for ct in card_texts:
-            # Extraire les mots-clés mécaniques du texte Oracle
-            for kw in ["target", "return", "untap", "sacrifice", "counter",
-                        "destroy", "exile", "draw", "discard", "damage",
-                        "tap", "creature", "spell", "stack", "resolve"]:
+            for kw in [
+                "target", "return", "untap", "sacrifice", "counter",
+                "destroy", "exile", "draw", "discard", "damage",
+                "tap", "creature", "spell", "stack", "resolve",
+                "copy", "trigger", "cast", "magecraft", "attack",
+                "instant", "sorcery", "ability", "permanent",
+            ]:
                 if kw in ct.lower():
                     keywords.append(kw)
         if keywords:
@@ -223,23 +307,32 @@ def ask(req: AskRequest):
 
     rules_context = "\n\n".join([doc.page_content for doc, _ in relevant])
 
-    # Injecter les cartes Scryfall dans le contexte
     cards_context = ""
     if card_texts:
         cards_context = (
-            "\n\n=== CARD ORACLE TEXTS (from Scryfall) ===\n\n"
+            "\n\n=== CARD ORACLE TEXTS & OFFICIAL RULINGS (from Scryfall) ===\n\n"
             + "\n\n".join(card_texts)
         )
 
     prompt = f"""{role}
-You have TWO sources of information below:
+You have THREE sources of information below:
 1. RULES: Official game rules from the rulebook.
 2. CARD TEXTS: The Oracle text of specific cards mentioned in the question.
+3. OFFICIAL RULINGS: Clarifications from Wizards of the Coast on how specific cards work.
 
-You MUST combine both sources to answer. Use the CARD TEXTS to understand what each card does, then apply the RULES to determine the outcome.
-Do NOT say the answer is not in the rules if the rules cover the relevant game mechanic (targeting, stack resolution, sacrifice, etc.), even if the rules do not mention the specific card by name.
-Do NOT use any external knowledge beyond what is provided below.
-Cite the exact rule number(s) you used.
+INSTRUCTIONS:
+- Combine ALL sources to answer: use CARD TEXTS to understand what each card does,
+  check OFFICIAL RULINGS for clarifications on interactions, then apply RULES.
+- Think step by step:
+  a) List the Oracle text of each card involved.
+  b) Check if any official rulings clarify the interaction being asked about.
+  c) Identify EVERY event that could trigger an ability (casting, copying, entering the battlefield...).
+  d) List each triggered ability separately and what causes it.
+  e) Apply any "additional trigger" or "double trigger" effects (like Veyran's static ability) to EACH individual trigger.
+  f) Count the total explicitly before giving the final answer.
+- Do NOT say "not in the rules" if the rules cover the relevant mechanic.
+- Do NOT invent or reference rules that are not provided below.
+- Cite the exact rule number(s) you used.
 
 Rules:
 {rules_context}
@@ -250,19 +343,12 @@ Answer:"""
 
     answer = llm.invoke(prompt)
 
-    # Noms des cartes fetchées (pour la réponse)
-    fetched_names = [
-        t.split("\n")[0].replace("[CARD: ", "").replace("]", "").strip()
-        for t in card_texts
-        if not t.startswith("[CARD NOT FOUND")
-    ]
-
     return AskResponse(
         question=req.question,
         game_id=req.game_id,
         answer=answer,
         chunks_used=len(relevant),
-        cards_fetched=fetched_names,
+        cards=card_infos,
     )
 
 
@@ -271,8 +357,6 @@ async def upload_rules(
     file: UploadFile = File(..., description="PDF des règles du jeu"),
     game_id: str = Query(..., description="Identifiant du jeu (ex: 'Risk', 'Uno')"),
 ):
-    """Upload un PDF de règles et l'indexe dans ChromaDB."""
-
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont acceptés.")
 
@@ -287,19 +371,10 @@ async def upload_rules(
         shutil.copyfileobj(file.file, f)
 
     try:
-        processor = PDFProcessor(
-            file_path=file_path,
-            game_id=game_id,
-        )
+        processor = PDFProcessor(file_path=file_path, game_id=game_id)
         chunks = processor.process_pdf()
-
-        ids = [
-            make_chunk_id(game_id, i, chunk.page_content)
-            for i, chunk in enumerate(chunks)
-        ]
-
+        ids = [make_chunk_id(game_id, i, chunk.page_content) for i, chunk in enumerate(chunks)]
         vectorstore.add_documents(chunks, ids=ids)
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors du traitement du PDF : {e}")
 
@@ -316,7 +391,6 @@ async def upload_rules(
 
 @app.get("/games")
 def list_games():
-    """Liste les jeux indexés dans ChromaDB."""
     all_metadata = vectorstore._collection.get()["metadatas"]
     games = set(m.get("game_id", "unknown") for m in all_metadata)
     return {"games": sorted(games)}
@@ -324,8 +398,8 @@ def list_games():
 
 @app.get("/health")
 def health():
-    """Vérifie que l'API et ChromaDB fonctionnent."""
     return {
         "status": "ok",
         "chunks_in_db": vectorstore._collection.count(),
+        "llm_provider": repr(llm),
     }
