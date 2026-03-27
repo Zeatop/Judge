@@ -8,3 +8,5 @@ pypdf
 fastapi 
 uvicorn 
 python-multipart
+accelerate
+numpy
