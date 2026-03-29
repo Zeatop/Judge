@@ -47,11 +47,13 @@ class ClaudeProvider(LLMProvider):
         model: str = "claude-sonnet-4-20250514",
         temperature: float = 0.0,
         max_tokens: int = 2048,
+        timeout: float = 120.0,
         api_key: str | None = None,
     ):
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.timeout = timeout
         from var import ANTHROPIC_API_KEY
         self.api_key = api_key or ANTHROPIC_API_KEY
         if not self.api_key:
@@ -98,7 +100,7 @@ class ClaudeProvider(LLMProvider):
                 self.API_URL,
                 headers=headers,
                 json=payload,
-                timeout=60.0,
+                timeout=self.timeout,
             )
 
             if resp.status_code == 200:

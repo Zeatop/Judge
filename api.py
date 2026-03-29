@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from db import vectorstore
 from pdfProcessor import PDFProcessor
 from llm_provider import get_provider
+from fastapi.middleware.cors import CORSMiddleware
 
 # ── App ─────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -28,6 +29,13 @@ app = FastAPI(
                 "Pour MTG, utilise [[nom de carte]] pour inclure le texte Oracle + rulings.",
     version="2.1.0",
 )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # port Vite par défaut
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # ── LLM ─────────────────────────────────────────────────────────────
 from var import LLM_MODEL
@@ -291,7 +299,7 @@ def ask(req: AskRequest):
             game_id=req.game_id,
             answer="Aucune règle pertinente trouvée.",
             chunks_used=0,
-            cards_fetched=[],
+            cards=[],
         )
 
     # 3. Construire le contexte
@@ -356,12 +364,15 @@ Answer:"""
 async def upload_rules(
     file: UploadFile = File(..., description="PDF des règles du jeu"),
     game_id: str = Query(..., description="Identifiant du jeu (ex: 'Risk', 'Uno')"),
+    lang: str = Query("fr", description="Langue des règles (ex: 'fr', 'en')"),
 ):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont acceptés.")
 
     if not game_id.strip():
         raise HTTPException(status_code=400, detail="game_id ne peut pas être vide.")
+
+    lang = lang.strip().lower()
 
     game_dir = os.path.join(UPLOAD_DIR, game_id)
     os.makedirs(game_dir, exist_ok=True)
@@ -371,7 +382,7 @@ async def upload_rules(
         shutil.copyfileobj(file.file, f)
 
     try:
-        processor = PDFProcessor(file_path=file_path, game_id=game_id)
+        processor = PDFProcessor(file_path=file_path, game_id=game_id, lang=lang)
         chunks = processor.process_pdf()
         ids = [make_chunk_id(game_id, i, chunk.page_content) for i, chunk in enumerate(chunks)]
         vectorstore.add_documents(chunks, ids=ids)
