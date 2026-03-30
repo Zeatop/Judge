@@ -5,3 +5,4 @@ rules/*
 test_model
 test_model/*
 var*
+auth/config.py

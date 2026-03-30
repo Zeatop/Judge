@@ -21,22 +21,34 @@ from db import vectorstore
 from pdfProcessor import PDFProcessor
 from llm_provider import get_provider
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+
+# ── Auth ────────────────────────────────────────────────────────────
+from auth import auth_router, init_db as init_auth_db
+from auth.config import AUTH_SECRET_KEY
 
 # ── App ─────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Board Game Rules RAG",
     description="Pose des questions sur les règles de jeux de société. "
                 "Pour MTG, utilise [[nom de carte]] pour inclure le texte Oracle + rulings.",
-    version="2.1.0",
+    version="2.2.0",
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173",
-                   "http://localhost:5174",
-                   "http://localhost:5175",],  # port Vite par défaut
+    allow_origins=["http://localhost:5173"],  # port Vite par défaut
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,  # Nécessaire pour les cookies de session OAuth
 )
+# SessionMiddleware requis par Authlib pour stocker le state/code temporaire
+app.add_middleware(SessionMiddleware, secret_key=AUTH_SECRET_KEY)
+
+# Monter le router auth
+app.include_router(auth_router)
+
+# Initialiser la DB users au démarrage
+init_auth_db()
 
 
 # ── LLM ─────────────────────────────────────────────────────────────
