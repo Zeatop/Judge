@@ -1,15 +1,4 @@
 # k8s/deployment.yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: judge-chromadb-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -58,8 +47,9 @@ spec:
             periodSeconds: 30
       volumes:
         - name: chromadb-storage
-          persistentVolumeClaim:
-            claimName: judge-chromadb-pvc
+          hostPath:
+            path: /data/judge/chroma_db
+            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
