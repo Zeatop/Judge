@@ -61,7 +61,7 @@ pipeline {
                     sh """
                         kubectl delete secret judge-secrets --ignore-not-found
                         kubectl create secret generic judge-secrets \
-                            --from-literal=DATABASE_URL="\$DATABASE_URL" \
+                            --from-literal=JUDGE_DATABASE_URL="\$DATABASE_URL"
                             --from-literal=API_BASE_URL="https://api.judgeai.app" \
                             --from-literal=MONGO_URI="\$MONGO_URI" \
                             --from-literal=ANTHROPIC_API_KEY="\$ANTHROPIC_API_KEY" \
