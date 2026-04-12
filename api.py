@@ -15,7 +15,7 @@ import time
 import hashlib
 import shutil
 import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends
 from pydantic import BaseModel
 from db import vectorstore
 from pdfProcessor import PDFProcessor
@@ -26,13 +26,18 @@ from starlette.middleware.sessions import SessionMiddleware
 # ── Auth ────────────────────────────────────────────────────────────
 from auth import auth_router, init_db as init_auth_db
 from auth.config import AUTH_SECRET_KEY
+from auth.jwt import get_optional_user_id
+
+# ── Chat ────────────────────────────────────────────────────────────
+from chat import chat_router, connect_mongo, close_mongo
+from chat.mongo_service import add_message, create_chat, get_recent_exchanges
 
 # ── App ─────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Board Game Rules RAG",
     description="Pose des questions sur les règles de jeux de société. "
                 "Pour MTG, utilise [[nom de carte]] pour inclure le texte Oracle + rulings.",
-    version="2.2.0",
+    version="2.4.0",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -44,11 +49,23 @@ app.add_middleware(
 # SessionMiddleware requis par Authlib pour stocker le state/code temporaire
 app.add_middleware(SessionMiddleware, secret_key=AUTH_SECRET_KEY)
 
-# Monter le router auth
+# Monter les routers
 app.include_router(auth_router)
+app.include_router(chat_router)
 
 # Initialiser la DB users au démarrage
 init_auth_db()
+
+
+# ── Lifecycle (MongoDB) ────────────────────────────────────────────
+@app.on_event("startup")
+async def startup():
+    await connect_mongo()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    await close_mongo()
 
 
 # ── LLM ─────────────────────────────────────────────────────────────
@@ -85,6 +102,7 @@ SCRYFALL_HEADERS = {
 class AskRequest(BaseModel):
     question: str
     game_id: str | None = None
+    chat_id: str | None = None
     k: int = 8
     threshold: float = 1.2
 
@@ -95,6 +113,7 @@ class AskRequest(BaseModel):
                     "question": "I cast [[Unsummon]] targeting my opponent's [[Grizzly Bears]]. "
                                 "In response, he sacrifices it. What happens?",
                     "game_id": "mtg",
+                    "chat_id": "6651f2a3b1c2d3e4f5a6b7c8",
                     "k": 8,
                     "threshold": 1.2,
                 }
@@ -120,6 +139,7 @@ class AskResponse(BaseModel):
     answer: str
     chunks_used: int
     cards: list[CardInfo]
+    chat_id: str | None = None
 
 
 class UploadResponse(BaseModel):
@@ -130,7 +150,7 @@ class UploadResponse(BaseModel):
 
 
 def fetch_card(card_name: str) -> dict | None:
-    """Récupère une carte depuis Scryfall via fuzzy search."""
+    """Récupère une carte depuis Scr yfall via fuzzy search."""
     try:
         resp = httpx.get(
             SCRYFALL_NAMED_URL,
@@ -266,7 +286,6 @@ def extract_and_fetch_cards(question: str) -> tuple[str, list[str], list[CardInf
     return clean_question, card_texts, card_infos
 
 
-
 # ── Helpers ─────────────────────────────────────────────────────────
 def make_chunk_id(game_id: str, index: int, content: str) -> str:
     digest = hashlib.md5(content.encode()).hexdigest()[:8]
@@ -275,15 +294,32 @@ def make_chunk_id(game_id: str, index: int, content: str) -> str:
 
 # ── Endpoints ───────────────────────────────────────────────────────
 @app.post("/ask", response_model=AskResponse)
-def ask(req: AskRequest):
+async def ask(
+    req: AskRequest,
+    user_id: str | None = Depends(get_optional_user_id),
+):
     """
     Pose une question sur les règles d'un jeu.
     Pour MTG, utilise [[nom de carte]] pour inclure automatiquement le texte Oracle + rulings.
+    Si chat_id est fourni, les 3 derniers échanges sont injectés pour le suivi de conversation.
+    Les messages sont automatiquement persistés en MongoDB si l'utilisateur est authentifié.
     """
     # 1. Extraire et fetch les cartes Scryfall (+ rulings)
     clean_question, card_texts, card_infos = extract_and_fetch_cards(req.question)
 
-    # 2. Recherche dans ChromaDB
+    # 2. Récupérer l'historique de conversation (avant la recherche RAG pour enrichir la query)
+    conversation_history = ""
+    recent = []
+    if req.chat_id:
+        recent = await get_recent_exchanges(req.chat_id, n=3)
+        if recent:
+            lines = []
+            for msg in recent:
+                role_label = "User" if msg["role"] == "user" else "Assistant"
+                lines.append(f"{role_label}: {msg['content']}")
+            conversation_history = "\n".join(lines)
+
+    # 3. Recherche dans ChromaDB
     search_query = clean_question
     if card_texts:
         keywords = []
@@ -307,16 +343,27 @@ def ask(req: AskRequest):
     results = vectorstore.similarity_search_with_score(search_query, **search_kwargs)
     relevant = [(doc, score) for doc, score in results if score < req.threshold]
 
-    if not relevant and not card_texts:
+    # 4. Si aucun résultat et qu'on a un historique, relancer avec le contexte enrichi
+    if not relevant and recent:
+        history_user_texts = " ".join(
+            msg["content"] for msg in recent if msg["role"] == "user"
+        )
+        enriched_query = clean_question + " " + history_user_texts
+        results = vectorstore.similarity_search_with_score(enriched_query, **search_kwargs)
+        relevant = [(doc, score) for doc, score in results if score < req.threshold]
+
+    # 5. Ne court-circuiter que s'il n'y a NI chunks, NI cartes, NI historique
+    if not relevant and not card_texts and not conversation_history:
         return AskResponse(
             question=req.question,
             game_id=req.game_id,
             answer="Aucune règle pertinente trouvée.",
             chunks_used=0,
             cards=[],
+            chat_id=req.chat_id,
         )
 
-    # 3. Construire le contexte
+    # 6. Construire le contexte
     if req.game_id:
         role = GAME_PROMPTS.get(req.game_id, DEFAULT_PROMPT)
     else:
@@ -335,6 +382,16 @@ def ask(req: AskRequest):
             "\n\n=== CARD ORACLE TEXTS & OFFICIAL RULINGS (from Scryfall) ===\n\n"
             + "\n\n".join(card_texts)
         )
+
+    history_block = ""
+    if conversation_history:
+        history_block = f"""
+
+=== CONVERSATION HISTORY (last exchanges) ===
+{conversation_history}
+=== END HISTORY ===
+
+Use this history to understand follow-up questions. If the user refers to "it", "that card", "the spell", "this", etc., resolve the reference from the history above. The user's new question is a continuation of this conversation."""
 
     prompt = f"""{role}
 You have THREE sources of information below:
@@ -355,6 +412,8 @@ INSTRUCTIONS:
 - Do NOT say "not in the rules" if the rules cover the relevant mechanic.
 - Do NOT invent or reference rules that are not provided below.
 - Cite the exact rule number(s) you used.
+- If no rules are provided but conversation history contains enough context to answer, use the history.
+{history_block}
 
 Rules:
 {rules_context}
@@ -365,12 +424,38 @@ Answer:"""
 
     answer = llm.invoke(prompt)
 
+    # 7. Persister les messages en MongoDB
+    response_chat_id = req.chat_id
+    if user_id:
+        try:
+            if not response_chat_id:
+                # Créer un nouveau chat
+                chat = await create_chat(
+                    user_id=user_id,
+                    game_id=req.game_id or "unknown",
+                    title=req.question[:50],
+                )
+                response_chat_id = chat["id"]
+
+            # Sauvegarder la question et la réponse
+            await add_message(response_chat_id, "user", req.question)
+            await add_message(
+                response_chat_id,
+                "assistant",
+                answer,
+                cards=[c.model_dump() for c in card_infos],
+                chunks_used=len(relevant),
+            )
+        except Exception as e:
+            print(f"[CHAT] Erreur persistance: {e}")
+
     return AskResponse(
         question=req.question,
         game_id=req.game_id,
         answer=answer,
         chunks_used=len(relevant),
         cards=card_infos,
+        chat_id=response_chat_id,
     )
 
 

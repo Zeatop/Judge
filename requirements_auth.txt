@@ -1,8 +1,11 @@
 # requirements-auth.txt
-# Dépendances additionnelles pour le module auth
+# Dépendances additionnelles pour auth + chat/MongoDB
 # À installer avec : pip install -r requirements-auth.txt
 
 authlib>=1.3.0          # OAuth client (Starlette integration)
 PyJWT[crypto]>=2.8.0    # JWT creation/verification + support ES256 (Apple)
-SQLAlchemy>=2.0.0       # ORM pour la DB users
+SQLAlchemy>=2.0.0       # ORM pour la DB users (auth)
 itsdangerous>=2.1.0     # Requis par Authlib/Starlette SessionMiddleware
+motor>=3.3.0            # Async MongoDB driver
+pymongo>=4.6.0          # MongoDB driver (dépendance de motor)
+python-dotenv>=1.0.0    # Charger les .env
