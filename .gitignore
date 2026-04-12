@@ -4,8 +4,6 @@ rules
 rules/*
 test_model
 test_model/*
-var*
-auth/config.py
 chat/mongo_config.py
 k8s/secret.yaml
 *.db

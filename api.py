@@ -41,7 +41,7 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://192.168.1.159:30090"],  # port Vite par défaut
+    allow_origins=["http://localhost:5173", os.getenv("FRONTEND_URL", "http://192.168.1.159:30090")],  # port Vite par défaut
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,  # Nécessaire pour les cookies de session OAuth
