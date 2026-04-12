@@ -62,12 +62,13 @@ pipeline {
                         kubectl delete secret judge-secrets --ignore-not-found
                         kubectl create secret generic judge-secrets \
                             --from-literal=DATABASE_URL="\$DATABASE_URL" \
+                            --from-literal=API_BASE_URL="https://api.judgeai.app" \
                             --from-literal=MONGO_URI="\$MONGO_URI" \
                             --from-literal=ANTHROPIC_API_KEY="\$ANTHROPIC_API_KEY" \
                             --from-literal=LLM_PROVIDER="claude" \
                             --from-literal=LLM_MODEL="claude-opus-4-6" \
                             --from-literal=AUTH_SECRET_KEY="\$(openssl rand -hex 32)" \
-                            --from-literal=FRONTEND_URL="http://192.168.1.159:30090" \
+                            --from-literal=FRONTEND_URL="https://judgeai.app" \
                             --from-literal=GOOGLE_JUDGE_CLIENT_ID="\$GOOGLE_CLIENT_ID" \
                             --from-literal=GOOGLE_JUDGE_CLIENT_SECRET="\$GOOGLE_CLIENT_SECRET" \
                             --from-literal=DISCORD_JUDGE_CLIENT_ID="\$DISCORD_CLIENT_ID" \

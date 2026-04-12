@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, create_engine
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://zeatop:changeme@10.0.0.30:5432/judgeai")
+DATABASE_URL = os.getenv("JUDGE_DATABASE_URL", "localhost:5432/judgeai")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

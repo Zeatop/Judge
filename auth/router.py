@@ -8,6 +8,8 @@ Routes :
     POST /auth/logout               → Placeholder (côté client, supprimer le token suffit)
 """
 
+import os
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -137,7 +139,7 @@ async def oauth_login(provider: str, request: Request):
     if client is None:
         raise HTTPException(status_code=500, detail=f"Provider {provider} non configuré.")
 
-    redirect_uri = str(request.url_for("oauth_callback", provider=provider))
+    redirect_uri = f"{os.getenv('API_BASE_URL')}/auth/{provider}/callback"
     return await client.authorize_redirect(request, redirect_uri)
 
 
@@ -237,7 +239,7 @@ def _apple_login_redirect(request: Request) -> RedirectResponse:
     from auth.config import APPLE_CLIENT_ID
     from urllib.parse import urlencode
 
-    redirect_uri = str(request.url_for("oauth_callback", provider="apple"))
+    redirect_uri = f"{os.getenv('API_BASE_URL')}/auth/apple/callback"
 
     params = {
         "response_type": "code",
@@ -272,7 +274,7 @@ async def _handle_apple_callback(request: Request) -> dict:
 
     # Échanger le code contre un token
     client_secret = generate_apple_client_secret()
-    redirect_uri = str(request.url_for("oauth_callback", provider="apple"))
+    redirect_uri = f"{os.getenv('API_BASE_URL')}/auth/apple/callback"
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
