@@ -10,3 +10,4 @@ uvicorn
 python-multipart
 accelerate
 numpy
+psycopg2

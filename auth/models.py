@@ -6,11 +6,10 @@ SQLite par défaut — suffisant pour la V1, migratable vers PostgreSQL.
 
 import uuid
 from datetime import datetime, timezone
-
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, create_engine
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-DATABASE_URL = "sqlite:///./users.db"
+DATABASE_URL = "postgresql://user:password@10.0.0.30:5432/judgeai"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
