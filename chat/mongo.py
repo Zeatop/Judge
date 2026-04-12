@@ -1,18 +1,16 @@
 # chat/mongo.py
 """
-Connexion MongoDB Atlas via motor (async driver).
+Connexion MongoDB via motor (async driver).
 Centralise le client et les collections.
 
 Variable d'environnement requise :
-    MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/judgeai?retryWrites=true&w=majority
+    MONGO_URI=mongodb://user:pass@10.0.0.30:27017/judgeai?authSource=judgeai
 """
 
-from logging import config
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
-from chat.mongo_config import MONGO_URI
 
-MONGO_URI = os.getenv("MONGO_URI", MONGO_URI)
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://zeatop:changeme@10.0.0.30:27017/judgeai?authSource=judgeai")
 DB_NAME = os.getenv("MONGO_DB_NAME", "judgeai")
 
 client: AsyncIOMotorClient = None

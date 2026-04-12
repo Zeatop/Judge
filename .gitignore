@@ -4,3 +4,12 @@ rules
 rules/*
 test_model
 test_model/*
+var*
+auth/config.py
+chat/mongo_config.py
+k8s/secret.yaml
+*.db
+__pycache__
+.env
+chroma_db/
+AuthKey.p8

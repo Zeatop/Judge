@@ -1,3 +1,15 @@
+# k8s/deployment.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: judge-chromadb-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,7 +17,7 @@ metadata:
   labels:
     app: judge
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: judge
@@ -18,7 +30,36 @@ spec:
         - name: judge
           image: 10.0.0.10:5000/judge:latest
           ports:
-            - containerPort: 80
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: judge-secrets
+          volumeMounts:
+            - name: chromadb-storage
+              mountPath: /app/chroma_db
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: chromadb-storage
+          persistentVolumeClaim:
+            claimName: judge-chromadb-pvc
 ---
 apiVersion: v1
 kind: Service
@@ -29,6 +70,6 @@ spec:
   selector:
     app: judge
   ports:
-    - port: 80
-      targetPort: 80
+    - port: 8000
+      targetPort: 8000
       nodePort: 30091

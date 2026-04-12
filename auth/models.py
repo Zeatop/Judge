@@ -1,17 +1,18 @@
 # auth/models.py
 """
 Modèles SQLAlchemy pour les utilisateurs et comptes OAuth.
-SQLite par défaut — suffisant pour la V1, migratable vers PostgreSQL.
+PostgreSQL en production, configurable via DATABASE_URL.
 """
 
+import os
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, create_engine
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-DATABASE_URL = "postgresql://user:password@10.0.0.30:5432/judgeai"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://zeatop:changeme@10.0.0.30:5432/judgeai")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -24,7 +25,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    email = Column(String, unique=True, index=True, nullable=True)  # Apple peut masquer l'email
+    email = Column(String, unique=True, index=True, nullable=True)
     display_name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -42,8 +43,8 @@ class OAuthAccount(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    provider = Column(String, nullable=False, index=True)   # "google", "facebook", "apple", "discord"
-    provider_user_id = Column(String, nullable=False)        # ID unique chez le provider
+    provider = Column(String, nullable=False, index=True)
+    provider_user_id = Column(String, nullable=False)
     access_token = Column(String, nullable=True)
     refresh_token = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
