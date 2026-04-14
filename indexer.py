@@ -9,11 +9,11 @@ Usage :
 
 import argparse
 import hashlib
-import shutil
 import os
 
 from pdfProcessor import PDFProcessor
-from db import vectorstore, embeddings, CHROMA_DIR
+from db import embeddings, CHROMA_DIR
+from langchain_chroma import Chroma
 
 # ── Configuration des jeux ──────────────────────────────────────────
 GAMES = [
@@ -40,18 +40,20 @@ def make_chunk_id(game_id: str, index: int, content: str) -> str:
 
 
 def reset_db():
-    """Vide le contenu de la base ChromaDB (sans supprimer le dossier monté)."""
-    if os.path.exists(CHROMA_DIR):
-        print("🗑️  Suppression du contenu de ChromaDB...")
-        for entry in os.scandir(CHROMA_DIR):
-            if entry.is_dir():
-                shutil.rmtree(entry.path)
-            else:
-                os.remove(entry.path)
+    """Vide toutes les collections ChromaDB via l'API (pas de suppression de fichiers)."""
+    print("🗑️  Réinitialisation de ChromaDB...")
+    vs = Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
+    vs._client.reset()
+
+
+def create_vectorstore():
+    """Crée une nouvelle connexion au vectorstore."""
+    return Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
 
 
 def index_all():
     """Indexe tous les jeux définis dans GAMES."""
+    vs = create_vectorstore()
     for game in GAMES:
         print(f"\n📖 Indexation de {game['game_id']}...")
         processor = PDFProcessor(
@@ -65,10 +67,10 @@ def index_all():
             for i, chunk in enumerate(chunks)
         ]
 
-        vectorstore.add_documents(chunks, ids=ids)
+        vs.add_documents(chunks, ids=ids)
         print(f"✅ {len(chunks)} chunks indexés pour {game['game_id']}")
 
-    print(f"\n🎉 Total dans ChromaDB : {vectorstore._collection.count()} chunks")
+    print(f"\n🎉 Total dans ChromaDB : {vs._collection.count()} chunks")
 
 
 def test_search():
@@ -76,7 +78,8 @@ def test_search():
     query = "can I play a sorcery during an opponent's turn?"
     print(f"\n🔍 Test : '{query}'")
 
-    results = vectorstore.similarity_search_with_score(query, k=5)
+    vs = create_vectorstore()
+    results = vs.similarity_search_with_score(query, k=5)
     for i, (doc, score) in enumerate(results):
         game = doc.metadata.get("game_id", "?")
         print(f"  [{i+1}] game={game} | score={score:.3f} | {doc.page_content[:80]}...")
