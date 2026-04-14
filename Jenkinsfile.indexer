@@ -13,6 +13,13 @@ pipeline {
             }
         }
 
+        stage('Stop Judge') {
+            steps {
+                sh "kubectl scale deployment judge --replicas=0"
+                sh "kubectl rollout status deployment/judge --timeout=60s"
+            }
+        }
+
         stage('Index ChromaDB') {
             steps {
                 sh """
@@ -20,6 +27,13 @@ pipeline {
                     kubectl apply -f k8s/indexer-job.yaml
                     kubectl wait --for=condition=complete job/judge-indexer --timeout=600s
                 """
+            }
+        }
+
+        stage('Start Judge') {
+            steps {
+                sh "kubectl scale deployment judge --replicas=1"
+                sh "kubectl rollout status deployment/judge --timeout=180s"
             }
         }
     }
@@ -30,7 +44,9 @@ pipeline {
         }
         failure {
             sh "kubectl logs job/judge-indexer || true"
-            echo "Indexation échouée — voir les logs ci-dessus"
+            // Toujours relancer judge même en cas d'échec
+            sh "kubectl scale deployment judge --replicas=1 || true"
+            echo "Indexation échouée — Judge relancé"
         }
     }
 }

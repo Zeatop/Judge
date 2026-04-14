@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'REINDEX', defaultValue: false, description: 'Re-indexer ChromaDB (cocher si les règles ont changé)')
+    }
+
     environment {
         REGISTRY = '10.0.0.10:5000'
         IMAGE = 'judge'
@@ -47,6 +51,26 @@ pipeline {
             }
         }
 
+        stage('Stop Judge for Indexing') {
+            when { expression { params.REINDEX } }
+            steps {
+                sh "kubectl scale deployment judge --replicas=0"
+                sh "kubectl rollout status deployment/judge --timeout=60s"
+            }
+        }
+
+        stage('Index ChromaDB') {
+            when { expression { params.REINDEX } }
+            steps {
+                sh """
+                    kubectl delete job judge-indexer --ignore-not-found
+                    sed -i 's|${REGISTRY}/${IMAGE}:latest|${REGISTRY}/${IMAGE}:${TAG}|' k8s/indexer-job.yaml
+                    kubectl apply -f k8s/indexer-job.yaml
+                    kubectl wait --for=condition=complete job/judge-indexer --timeout=600s
+                """
+            }
+        }
+
         stage('Deploy to K8s') {
             steps {
                 withCredentials([
@@ -87,7 +111,8 @@ pipeline {
             echo "Déploiement réussi ! Judge accessible sur le port 30091"
         }
         failure {
-            echo "Le pipeline a échoué"
+            sh "kubectl scale deployment judge --replicas=1 || true"
+            echo "Le pipeline a échoué — Judge relancé par sécurité"
         }
     }
 }
