@@ -40,10 +40,13 @@ def make_chunk_id(game_id: str, index: int, content: str) -> str:
 
 
 def reset_db():
-    """Vide toutes les collections ChromaDB via l'API (pas de suppression de fichiers)."""
+    """Vide toutes les collections ChromaDB."""
     print("🗑️  Réinitialisation de ChromaDB...")
-    vs = Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
-    vs._client.reset()
+    import chromadb
+    client = chromadb.PersistentClient(path=CHROMA_DIR)
+    for col in client.list_collections():
+        client.delete_collection(col.name)
+    print("✅ Collections supprimées")
 
 
 def create_vectorstore():
