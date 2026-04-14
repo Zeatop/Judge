@@ -40,10 +40,14 @@ def make_chunk_id(game_id: str, index: int, content: str) -> str:
 
 
 def reset_db():
-    """Supprime et recrée la base ChromaDB."""
+    """Vide le contenu de la base ChromaDB (sans supprimer le dossier monté)."""
     if os.path.exists(CHROMA_DIR):
-        print("🗑️  Suppression de l'ancienne base ChromaDB...")
-        shutil.rmtree(CHROMA_DIR)
+        print("🗑️  Suppression du contenu de ChromaDB...")
+        for entry in os.scandir(CHROMA_DIR):
+            if entry.is_dir():
+                shutil.rmtree(entry.path)
+            else:
+                os.remove(entry.path)
 
 
 def index_all():
