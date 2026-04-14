@@ -1,0 +1,36 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = '10.0.0.10:5000'
+        IMAGE = 'judge'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'master', url: 'https://github.com/Zeatop/Judge.git'
+            }
+        }
+
+        stage('Index ChromaDB') {
+            steps {
+                sh """
+                    kubectl delete job judge-indexer --ignore-not-found
+                    kubectl apply -f k8s/indexer-job.yaml
+                    kubectl wait --for=condition=complete job/judge-indexer --timeout=600s
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Indexation ChromaDB terminée avec succès"
+        }
+        failure {
+            sh "kubectl logs job/judge-indexer || true"
+            echo "Indexation échouée — voir les logs ci-dessus"
+        }
+    }
+}
