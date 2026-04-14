@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: judge-indexer
+spec:
+  ttlSecondsAfterFinished: 3600   # nettoyage auto 1h après
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: indexer
+          image: 10.0.0.10:5000/judge:latest
+          command: ["python", "indexer.py", "--reset"]
+          envFrom:
+            - secretRef:
+                name: judge-secrets
+          volumeMounts:
+            - name: chromadb-storage
+              mountPath: /app/chroma_db
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "3Gi"
+              cpu: "2000m"
+      volumes:
+        - name: chromadb-storage
+          hostPath:
+            path: /data/judge/chroma_db
+            type: DirectoryOrCreate
