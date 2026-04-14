@@ -12,8 +12,9 @@ import hashlib
 import shutil
 import os
 
+from langchain_chroma import Chroma
 from pdfProcessor import PDFProcessor
-from db import vectorstore, embeddings, CHROMA_DIR
+from db import embeddings, CHROMA_DIR
 
 # ── Configuration des jeux ──────────────────────────────────────────
 GAMES = [
@@ -50,8 +51,13 @@ def reset_db():
                 os.remove(entry.path)
 
 
+def get_vectorstore():
+    return Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
+
+
 def index_all():
     """Indexe tous les jeux définis dans GAMES."""
+    vs = get_vectorstore()
     for game in GAMES:
         print(f"\n📖 Indexation de {game['game_id']}...")
         processor = PDFProcessor(
@@ -65,10 +71,10 @@ def index_all():
             for i, chunk in enumerate(chunks)
         ]
 
-        vectorstore.add_documents(chunks, ids=ids)
+        vs.add_documents(chunks, ids=ids)
         print(f"✅ {len(chunks)} chunks indexés pour {game['game_id']}")
 
-    print(f"\n🎉 Total dans ChromaDB : {vectorstore._collection.count()} chunks")
+    print(f"\n🎉 Total dans ChromaDB : {vs._collection.count()} chunks")
 
 
 def test_search():
@@ -76,7 +82,7 @@ def test_search():
     query = "can I play a sorcery during an opponent's turn?"
     print(f"\n🔍 Test : '{query}'")
 
-    results = vectorstore.similarity_search_with_score(query, k=5)
+    results = get_vectorstore().similarity_search_with_score(query, k=5)
     for i, (doc, score) in enumerate(results):
         game = doc.metadata.get("game_id", "?")
         print(f"  [{i+1}] game={game} | score={score:.3f} | {doc.page_content[:80]}...")
