@@ -10,11 +10,8 @@ Usage :
 """
 
 import os
-import re
-import time
 import hashlib
 import shutil
-import httpx
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends
 from pydantic import BaseModel
 from db import vectorstore
@@ -31,6 +28,20 @@ from auth.jwt import get_optional_user_id
 # ── Chat ────────────────────────────────────────────────────────────
 from chat import chat_router, connect_mongo, close_mongo
 from chat.mongo_service import add_message, create_chat, get_recent_exchanges
+
+# ── LLM ────────────────────────────────────────────────────────────
+
+from llm_provider import get_cached_provider
+from llm_provider import _PROVIDER_CACHE
+from availabale_models import AVAILABLE_MODELS, MODELS_BY_ID, DEFAULT_MODEL_ID
+
+# ── RAG ────────────────────────────────────────────────────────────
+from rag_core import (
+    GAME_PROMPTS,
+    DEFAULT_PROMPT,
+    CardInfo,
+    extract_and_fetch_cards,
+)
 
 # ── App ─────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -68,41 +79,16 @@ async def shutdown():
     await close_mongo()
 
 
-# ── LLM ─────────────────────────────────────────────────────────────
-from var import LLM_MODEL
-llm_kwargs = {}
-if LLM_MODEL:
-    llm_kwargs["model"] = LLM_MODEL
-
-llm = get_provider(**llm_kwargs)
-
 # ── Dossier d'upload ────────────────────────────────────────────────
 UPLOAD_DIR = "./rules/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-# ── Prompts par jeu ─────────────────────────────────────────────────
-GAME_PROMPTS = {
-    "mtg": "You are a strict Magic: The Gathering judge.",
-    "Catan": "You are an expert on Catan board game rules.",
-    "Monopoly": "You are an expert on Monopoly board game rules.",
-}
-DEFAULT_PROMPT = "You are a board game rules expert."
-
-# ── Scryfall ────────────────────────────────────────────────────────
-SCRYFALL_NAMED_URL = "https://api.scryfall.com/cards/named"
-SCRYFALL_DELAY = 0.1  # 100ms entre chaque requête (respect des rate limits)
-CARD_PATTERN = re.compile(r"\[\[(.+?)\]\]")
-
-SCRYFALL_HEADERS = {
-    "User-Agent": "BoardGameRAG/2.1",
-    "Accept": "application/json",
-}
 
 # ── Schemas ─────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
     question: str
     game_id: str | None = None
     chat_id: str | None = None
+    model_id: str | None = None
     k: int = 8
     threshold: float = 1.2
 
@@ -122,17 +108,6 @@ class AskRequest(BaseModel):
     }
 
 
-class CardInfo(BaseModel):
-    """Infos d'une carte MTG pour le frontend."""
-    name: str
-    mana_cost: str
-    type_line: str
-    oracle_text: str
-    image_url: str | None = None
-    scryfall_url: str | None = None
-    rulings: list[str] = []
-
-
 class AskResponse(BaseModel):
     question: str
     game_id: str | None
@@ -148,148 +123,11 @@ class UploadResponse(BaseModel):
     chunks_indexed: int
     total_chunks: int
 
-
-def fetch_card(card_name: str) -> dict | None:
-    """Récupère une carte depuis Scr yfall via fuzzy search."""
-    try:
-        resp = httpx.get(
-            SCRYFALL_NAMED_URL,
-            params={"fuzzy": card_name},
-            headers=SCRYFALL_HEADERS,
-            timeout=10.0,
-        )
-        if resp.status_code == 200:
-            return resp.json()
-        return None
-    except httpx.RequestError:
-        return None
-
-
-def fetch_rulings(rulings_uri: str) -> list[str]:
-    """
-    Récupère les rulings officiels d'une carte depuis Scryfall.
-    Retourne une liste de textes de rulings, ou [] si aucun.
-    """
-    try:
-        time.sleep(SCRYFALL_DELAY)
-        resp = httpx.get(
-            rulings_uri,
-            headers=SCRYFALL_HEADERS,
-            timeout=10.0,
-        )
-        if resp.status_code != 200:
-            return []
-
-        data = resp.json()
-        rulings = []
-        for entry in data.get("data", []):
-            comment = entry.get("comment", "").strip()
-            if comment:
-                rulings.append(comment)
-        return rulings
-    except httpx.RequestError:
-        return []
-
-
-def format_card_text(card: dict, rulings: list[str] | None = None) -> str:
-    """Formate les infos d'une carte + ses rulings pour injection dans le contexte."""
-    name = card.get("name", "Unknown")
-    mana_cost = card.get("mana_cost", "")
-    type_line = card.get("type_line", "")
-    oracle_text = card.get("oracle_text", "")
-    power = card.get("power")
-    toughness = card.get("toughness")
-    loyalty = card.get("loyalty")
-
-    # Cartes double-face : concaténer les deux faces
-    if not oracle_text and "card_faces" in card:
-        faces = card["card_faces"]
-        parts = []
-        for face in faces:
-            face_text = (
-                f"{face.get('name', '')} {face.get('mana_cost', '')}\n"
-                f"{face.get('type_line', '')}\n"
-                f"{face.get('oracle_text', '')}"
-            )
-            if face.get("power"):
-                face_text += f"\n{face['power']}/{face['toughness']}"
-            parts.append(face_text)
-        text = f"[CARD: {name}]\n" + "\n---\n".join(parts)
-    else:
-        text = f"[CARD: {name}] {mana_cost}\n{type_line}\n{oracle_text}"
-        if power and toughness:
-            text += f"\n{power}/{toughness}"
-        if loyalty:
-            text += f"\nLoyalty: {loyalty}"
-
-    # Ajouter les rulings si disponibles
-    if rulings:
-        text += "\n\n  OFFICIAL RULINGS:"
-        for i, ruling in enumerate(rulings, 1):
-            text += f"\n  {i}. {ruling}"
-
-    return text
-
-
-def extract_and_fetch_cards(question: str) -> tuple[str, list[str], list[CardInfo]]:
-    """
-    Extrait les [[card name]] de la question, les récupère sur Scryfall
-    (avec leurs rulings), et retourne (question nettoyée, textes pour le contexte LLM, infos pour le frontend).
-    """
-    matches = CARD_PATTERN.findall(question)
-    if not matches:
-        return question, [], []
-
-    card_texts = []
-    card_infos = []
-    for card_name in matches:
-        card = fetch_card(card_name.strip())
-        if card:
-            # Récupérer les rulings via rulings_uri
-            rulings = []
-            rulings_uri = card.get("rulings_uri")
-            if rulings_uri:
-                rulings = fetch_rulings(rulings_uri)
-
-            card_texts.append(format_card_text(card, rulings))
-
-            # Construire l'objet CardInfo pour le frontend
-            # Gestion des cartes double-face pour oracle_text
-            oracle = card.get("oracle_text", "")
-            if not oracle and "card_faces" in card:
-                oracle = "\n---\n".join(
-                    face.get("oracle_text", "") for face in card["card_faces"]
-                )
-
-            # Image : priorité à la grande image, fallback sur les faces
-            image_url = None
-            if "image_uris" in card:
-                image_url = card["image_uris"].get("large")
-            elif "card_faces" in card and card["card_faces"]:
-                face_images = card["card_faces"][0].get("image_uris", {})
-                image_url = face_images.get("large")
-
-            card_infos.append(CardInfo(
-                name=card.get("name", "Unknown"),
-                mana_cost=card.get("mana_cost", ""),
-                type_line=card.get("type_line", ""),
-                oracle_text=oracle,
-                image_url=image_url,
-                scryfall_url=card.get("scryfall_uri"),
-                rulings=rulings,
-            ))
-        else:
-            card_texts.append(f"[CARD NOT FOUND: {card_name}]")
-        time.sleep(SCRYFALL_DELAY)
-
-    clean_question = CARD_PATTERN.sub(lambda m: m.group(1), question)
-    return clean_question, card_texts, card_infos
-
-
 # ── Helpers ─────────────────────────────────────────────────────────
 def make_chunk_id(game_id: str, index: int, content: str) -> str:
     digest = hashlib.md5(content.encode()).hexdigest()[:8]
     return f"{game_id}_{index}_{digest}"
+    
 
 
 # ── Endpoints ───────────────────────────────────────────────────────
@@ -422,6 +260,12 @@ Rules:
 Question: {clean_question}
 Answer:"""
 
+    model_id = req.model_id or DEFAULT_MODEL_ID
+    if model_id not in MODELS_BY_ID:
+        raise HTTPException(status_code=400, detail=f"Modèle inconnu : {model_id}")
+    model_cfg = MODELS_BY_ID[model_id]
+    llm = get_cached_provider(model_cfg["provider"], model_cfg["model"])
+
     answer = llm.invoke(prompt)
 
     # 7. Persister les messages en MongoDB
@@ -511,5 +355,17 @@ def health():
     return {
         "status": "ok",
         "chunks_in_db": vectorstore._collection.count(),
-        "llm_provider": repr(llm),
+        "default_model": DEFAULT_MODEL_ID,
+        "cached_providers": len(_PROVIDER_CACHE),
+    }
+
+@app.get("/models")
+def list_models():
+    """Retourne la liste des modèles LLM disponibles pour l'UI."""
+    return {
+        "default": DEFAULT_MODEL_ID,
+        "models": [
+            {k: v for k, v in m.items() if k not in {"provider", "model"}}
+            for m in AVAILABLE_MODELS
+        ],
     }

@@ -1,16 +1,7 @@
-# chat/mongo.py
-"""
-Connexion MongoDB via motor (async driver).
-Centralise le client et les collections.
-
-Variable d'environnement requise :
-    MONGO_URI=mongodb://user:pass@10.0.0.30:27017/judgeai?authSource=judgeai
-"""
-
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://zeatop:changeme@10.0.0.30:27017/judgeai?authSource=judgeai")
+MONGO_URI = os.getenv("MONGO_URI", "")
 DB_NAME = os.getenv("MONGO_DB_NAME", "judgeai")
 
 client: AsyncIOMotorClient = None
@@ -18,20 +9,29 @@ db = None
 
 
 async def connect_mongo():
-    """Initialise la connexion MongoDB. À appeler au startup de FastAPI."""
+    """Initialise la connexion MongoDB. Optionnel en dev : si MONGO_URI vide ou échec, l'API tourne en mode sans historique."""
     global client, db
-    client = AsyncIOMotorClient(MONGO_URI)
-    db = client[DB_NAME]
-
-    # Créer les index
-    await db.chats.create_index([("user_id", 1), ("updated_at", -1)])
-    await db.messages.create_index([("chat_id", 1), ("created_at", 1)])
-
-    print(f"[MONGO] Connecté à {DB_NAME}")
+    
+    if not MONGO_URI:
+        print("[MONGO] MONGO_URI non défini — mode sans historique (dev)")
+        return
+    
+    try:
+        client = AsyncIOMotorClient(MONGO_URI, serverSelectionTimeoutMS=3000)
+        db = client[DB_NAME]
+        # Tester la connexion
+        await db.command("ping")
+        # Créer les index
+        await db.chats.create_index([("user_id", 1), ("updated_at", -1)])
+        await db.messages.create_index([("chat_id", 1), ("created_at", 1)])
+        print(f"[MONGO] Connecté à {DB_NAME}")
+    except Exception as e:
+        print(f"[MONGO] Connexion échouée ({e.__class__.__name__}) — mode sans historique")
+        client = None
+        db = None
 
 
 async def close_mongo():
-    """Ferme la connexion. À appeler au shutdown de FastAPI."""
     global client
     if client:
         client.close()
@@ -39,5 +39,4 @@ async def close_mongo():
 
 
 def get_db():
-    """Retourne la base de données courante."""
     return db

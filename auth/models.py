@@ -10,9 +10,10 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, create_engine
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-DATABASE_URL = os.getenv("JUDGE_DATABASE_URL", "localhost:5432/judgeai")
+DATABASE_URL = os.getenv("JUDGE_DATABASE_URL", "sqlite:///./judge_dev.db")
 
-engine = create_engine(DATABASE_URL)
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

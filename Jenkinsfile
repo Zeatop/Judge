@@ -77,6 +77,7 @@ pipeline {
                     string(credentialsId: 'JUDGE_DATABASE_URL', variable: 'DATABASE_URL'),
                     string(credentialsId: 'JUDGE_MONGO_URI', variable: 'MONGO_URI'),
                     string(credentialsId: 'ANTHROPIC_API_KEY', variable: 'ANTHROPIC_API_KEY'),
+                    string(credentialsId: 'DEEPSEEK_API_KEY', variable: 'DEEPSEEK_API_KEY'),
                     string(credentialsId: 'GOOGLE_JUDGE_CLIENT_ID', variable: 'GOOGLE_CLIENT_ID'),
                     string(credentialsId: 'GOOGLE_JUDGE_CLIENT_SECRET', variable: 'GOOGLE_CLIENT_SECRET'),
                     string(credentialsId: 'DISCORD_JUDGE_CLIENT_ID', variable: 'DISCORD_CLIENT_ID'),
@@ -89,6 +90,7 @@ pipeline {
                             --from-literal=API_BASE_URL="https://api.judgeai.app" \
                             --from-literal=MONGO_URI="\$MONGO_URI" \
                             --from-literal=ANTHROPIC_API_KEY="\$ANTHROPIC_API_KEY" \
+                            --from-literal=DEEPSEEK_API_KEY="\$DEEPSEEK_API_KEY" \
                             --from-literal=LLM_PROVIDER="claude" \
                             --from-literal=LLM_MODEL="claude-opus-4-6" \
                             --from-literal=AUTH_SECRET_KEY="\$(openssl rand -hex 32)" \

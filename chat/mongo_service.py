@@ -28,6 +28,8 @@ def _now() -> datetime:
 async def create_chat(user_id: str, game_id: str, title: str = "Nouveau chat") -> dict:
     """Crée un nouveau chat et retourne le document créé."""
     db = get_db()
+    if db is None:
+        raise RuntimeError("MongoDB non disponible")
     now = _now()
     doc = {
         "user_id": user_id,

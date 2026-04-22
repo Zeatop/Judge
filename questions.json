@@ -1,0 +1,52 @@
+[
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Young Pyromancer]]. I cast [[Brainstorm]]. How many Elemental tokens do I create?",
+    "game_id": "mtg",
+    "expected": "Veyran doubles magecraft-style triggers from spells you cast if they are instant or sorcery? Actually Young Pyromancer triggers on cast, not magecraft, so only 1 token is created"
+  },
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Archmage Emeritus]]. I cast my second instant this turn. How many cards do I draw?",
+    "game_id": "mtg",
+    "expected": "Veyran doubles triggered abilities of instant and sorcery spells you control, so Archmage Emeritus triggers twice and you draw 2 cards"
+  },
+  {
+    "question": "I control [[Krark, the Thumbless]] and [[Veyran, Voice of Duality]]. I cast [[Lightning Bolt]]. What happens if Krark's trigger and Veyran are both relevant to the spell?",
+    "game_id": "mtg",
+    "expected": "Krark triggers once, Veyran does not double Krark because Krark is a triggered ability of a creature you control, not an instant or sorcery spell trigger"
+  },
+  {
+    "question": "I control [[Strionic Resonator]] and [[Roaming Throne]] naming Vampire. [[Sanguine Bond]] triggers from me gaining life. Can I copy the trigger, and if so how many life-loss triggers happen for my opponent?",
+    "game_id": "mtg",
+    "expected": "Roaming Throne does not interact with Sanguine Bond unless it shares the chosen creature type; Strionic Resonator can copy the triggered ability once, so the opponent loses life twice total"
+  },
+  {
+    "question": "I control [[The Peregrine Dynamo]] and [[Kalamax, the Stormsire]]. I cast an instant during my turn while Kalamax is tapped. How many copies of that instant are created?",
+    "game_id": "mtg",
+    "expected": "Kalamax copies the first instant you cast each turn if it is tapped, and Peregrine Dynamo does not copy Kalamax because it only works on legendary creature spells you control, so 1 copy is created"
+  },
+  {
+    "question": "I control [[Anointed Procession]] and [[Academy Manufactor]]. I create one Clue token. How many total tokens do I get?",
+    "game_id": "mtg",
+    "expected": "Anointed Procession doubles token creation, and Academy Manufactor replaces the single artifact token creation with one Clue, one Food, and one Treasure, then Procession doubles each, for 6 tokens total"
+  },
+  {
+    "question": "I control [[Panharmonicon]] and [[Brago, King Eternal]]. Brago deals combat damage to a player. How many permanents do I blink?",
+    "game_id": "mtg",
+    "expected": "Panharmonicon does not double Brago's combat damage trigger because it is not an ETB or artifact/creature trigger from a permanent entering the battlefield, so 1 trigger resolves"
+  },
+  {
+    "question": "I control [[Blood Artist]] and [[Teysa Karlov]]. A creature token I control dies. How many life-loss and life-gain triggers happen?",
+    "game_id": "mtg",
+    "expected": "Blood Artist triggers twice because Teysa doubles triggered abilities of creatures dying, so each trigger makes one player lose 1 and you gain 1 for a total of 2 life lost and 2 life gained"
+  },
+  {
+    "question": "I control [[Notion Thief]] and [[Teferi's Puzzle Box]]. My opponent draws for the turn. What happens to the draw step?",
+    "game_id": "mtg",
+    "expected": "Notion Thief replaces the draw, so the opponent does not draw normally; if Teferi's Puzzle Box triggers later, it can still force a hand shuffle and redraw sequence, but the turn draw is stolen by Notion Thief"
+  },
+  {
+    "question": "I control [[Ob Nixilis, Captive Kingpin]] and [[Torbran, Thane of Red Fell]]. I deal 1 noncombat damage to an opponent. How much damage do they take and how many Ob Nixilis triggers happen?",
+    "game_id": "mtg",
+    "expected": "Torbran increases red damage by 2, so the damage becomes 3 if the source is red; Ob Nixilis triggers once when an opponent loses life from a source dealing 1 or more damage"
+  }
+]

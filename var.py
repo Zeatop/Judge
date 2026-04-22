@@ -14,3 +14,5 @@ LLM_MODEL = os.getenv("LLM_MODEL", "claude-opus-4-6")
 
 # Clé API Anthropic (requis uniquement si LLM_PROVIDER = "claude")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-678d521b19b24a5db72eda3a4ad05873")

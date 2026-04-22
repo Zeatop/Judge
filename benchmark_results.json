@@ -1,0 +1,342 @@
+[
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Young Pyromancer]]. I cast [[Brainstorm]]. How many Elemental tokens do I create?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Young Pyromancer]]. I cast [[Brainstorm]]. How many Elemental tokens do I create?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Young Pyromancer]]. I cast [[Brainstorm]]. How many Elemental tokens do I create?",
+    "game_id": "mtg",
+    "expected": "Veyran doubles magecraft-style triggers from spells you cast if they are instant or sorcery? Actually Young Pyromancer triggers on cast, not magecraft, so only 1 token is created",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 1,
+    "latency_s": 31.65,
+    "in_tokens_est": 1006,
+    "out_tokens_est": 103,
+    "cost_usd": 0.000779,
+    "answer": "You will create **2 Elemental tokens**.\n\n**Explanation:**  \nCasting Brainstorm triggers both Young Pyromancer’s ability and Veyran’s magecraft ability. Due to Veyran’s last ability, each of these triggered abilities triggers an additional time. This means Young Pyromancer’s ability triggers twice, resulting in two tokens. Veyran’s own ability also triggers twice, but that is separate and does not create tokens."
+  },
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Young Pyromancer]]. I cast [[Brainstorm]]. How many Elemental tokens do I create?",
+    "game_id": "mtg",
+    "expected": "Veyran doubles magecraft-style triggers from spells you cast if they are instant or sorcery? Actually Young Pyromancer triggers on cast, not magecraft, so only 1 token is created",
+    "provider": "deepseek-chat",
+    "chunks_used": 1,
+    "latency_s": 20.14,
+    "in_tokens_est": 1006,
+    "out_tokens_est": 565,
+    "cost_usd": 0.000519,
+    "answer": "Let’s go step by step.  \n\n**a) Oracle text of each card involved**  \n- **Veyran, Voice of Duality** — Magecraft: Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end of turn.  \n  Also: If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.  \n- **Young Pyromancer** — Whenever you cast an instant or sorcery spell, create a 1/1 red Elemental creature token.  \n- **Brainstorm** — Instant: Draw three cards, then put two cards from your hand on top of your library in any order.  \n\n**b) Official rulings that clarify**  \nFrom Veyran’s rulings:  \n- Its last ability causes each of your magecraft abilities (and other triggered abilities from permanents you control triggered by casting/copying an instant/sorcery) to trigger an additional time.  \n- If you control two Veyrans, each such ability triggers three times (original + two additional). With one Veyran, it triggers twice (original + one additional).  \n\n**c) Identify every event that could trigger an ability**  \nCasting Brainstorm (an instant spell) is one event.  \nIt triggers:  \n1. Veyran’s magecraft ability (gets +1/+1).  \n2. Young Pyromancer’s ability (create a token).  \n\n**d) List each triggered ability separately**  \n- **Veyran’s magecraft** — triggers once from casting Brainstorm.  \n- **Young Pyromancer’s ability** — triggers once from casting Brainstorm.  \n\n**e) Apply “additional trigger” effects**  \nVeyran’s last ability says: If casting Brainstorm causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.  \n- Veyran’s own magecraft ability is a triggered ability of a permanent you control, triggered by casting Brainstorm → triggers an additional time. So Veyran’s magecraft triggers twice total.  \n- Young Pyromancer’s ability is also a triggered ability of a permanent you control, triggered by casting Brainstorm → triggers an additional time. So Young Pyromancer’s ability triggers twice total.  \n\n**f) Count the total tokens**  \nYoung Pyromancer’s ability triggers twice. Each instance creates one 1/1 red Elemental token.  \nSo total tokens created = **2**.  \n\n**Final answer:**  \n\\[\n\\boxed{2}\n\\]"
+  },
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Archmage Emeritus]]. I cast my second instant this turn. How many cards do I draw?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Archmage Emeritus]]. I cast my second instant this turn. How many cards do I draw?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Archmage Emeritus]]. I cast my second instant this turn. How many cards do I draw?",
+    "game_id": "mtg",
+    "expected": "Veyran doubles triggered abilities of instant and sorcery spells you control, so Archmage Emeritus triggers twice and you draw 2 cards",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 8,
+    "latency_s": 34.09,
+    "in_tokens_est": 3583,
+    "out_tokens_est": 113,
+    "cost_usd": 0.002218,
+    "answer": "With Veyran, Voice of Duality on the battlefield, each magecraft ability triggers an additional time when you cast or copy an instant or sorcery spell. Archmage Emeritus has a magecraft ability that triggers when you cast an instant or sorcery spell, causing you to draw a card. When you cast your second instant spell, Archmage Emeritus's ability triggers twice—once normally and once due to Veyran's effect. Therefore, you draw 2 cards.\n\n**Answer: 2**"
+  },
+  {
+    "question": "I control [[Veyran, Voice of Duality]] and [[Archmage Emeritus]]. I cast my second instant this turn. How many cards do I draw?",
+    "game_id": "mtg",
+    "expected": "Veyran doubles triggered abilities of instant and sorcery spells you control, so Archmage Emeritus triggers twice and you draw 2 cards",
+    "provider": "deepseek-chat",
+    "chunks_used": 8,
+    "latency_s": 18.96,
+    "in_tokens_est": 3583,
+    "out_tokens_est": 515,
+    "cost_usd": 0.00122,
+    "answer": "Let’s go step by step.\n\n---\n\n**a) Oracle text of each card involved:**\n\n- **Veyran, Voice of Duality** (1UR)  \nLegendary Creature — Efreet Wizard  \nMagecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end of turn.  \nIf you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.  \n2/2\n\n- **Archmage Emeritus** (2UU)  \nCreature — Human Wizard  \nMagecraft — Whenever you cast or copy an instant or sorcery spell, draw a card.  \n2/2\n\n---\n\n**b) Official rulings relevant:**\n\nFrom Veyran’s rulings:  \n- Its last ability causes each of your magecraft abilities (including Veyran’s own) to trigger an additional time.  \n- If you control two Veyrans, casting an instant or sorcery spell causes abilities to trigger three times (original + 2 additional). With one Veyran, it’s original + 1 additional = **two triggers per magecraft ability**.\n\n---\n\n**c) Identify events that could trigger an ability:**\n\nI cast my second instant this turn.  \nCasting an instant spell triggers:  \n1. Veyran’s magecraft ability (+1/+1 until end of turn).  \n2. Archmage Emeritus’s magecraft ability (draw a card).\n\n---\n\n**d) List each triggered ability separately before Veyran’s effect:**\n\n- Trigger 1: Veyran’s magecraft (from casting instant).  \n- Trigger 2: Archmage Emeritus’s magecraft (from casting instant).\n\n---\n\n**e) Apply “additional trigger” effect:**\n\nVeyran’s last ability says: If casting an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\n\nSo:  \n- Veyran’s magecraft ability: original trigger + 1 additional = **2 triggers** (each giving +1/+1).  \n- Archmage Emeritus’s magecraft ability: original trigger + 1 additional = **2 triggers** (each drawing a card).\n\n---\n\n**f) Count total cards drawn:**\n\nArchmage Emeritus’s magecraft triggers twice.  \nEach trigger resolves to “draw a card.”  \nSo **2 cards drawn**.\n\n---\n\n**Final answer:**  \n\\[\n\\boxed{2}\n\\]"
+  },
+  {
+    "question": "I control [[Krark, the Thumbless]] and [[Veyran, Voice of Duality]]. I cast [[Lightning Bolt]]. What happens if Krark's trigger and Veyran are both relevant to the spell?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Krark, the Thumbless]] and [[Veyran, Voice of Duality]]. I cast [[Lightning Bolt]]. What happens if Krark's trigger and Veyran are both relevant to the spell?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Krark, the Thumbless]] and [[Veyran, Voice of Duality]]. I cast [[Lightning Bolt]]. What happens if Krark's trigger and Veyran are both relevant to the spell?",
+    "game_id": "mtg",
+    "expected": "Krark triggers once, Veyran does not double Krark because Krark is a triggered ability of a creature you control, not an instant or sorcery spell trigger",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 7,
+    "latency_s": 121.99,
+    "in_tokens_est": 5663,
+    "out_tokens_est": 1056,
+    "cost_usd": 0.005427,
+    "answer": "When you cast Lightning Bolt with both Krark, the Thumbless and Veyran, Voice of Duality on the battlefield, the following sequence occurs:\n\n1. **Lightning Bolt goes on the stack.** You choose a target for it.\n\n2. **Triggered abilities trigger.** Casting the spell causes two abilities to trigger:\n   - Krark’s ability: “Whenever you cast an instant or sorcery spell, flip a coin…”\n   - Veyran’s magecraft ability: “Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1…”\n\n   Due to Veyran’s static ability (“If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time”), each of these abilities triggers **twice** instead of once. You now have four triggers: two from Krark and two from Veyran’s magecraft.\n\n3. **Put triggers on the stack.** As the controller, you choose the order these four triggers go on the stack (all are controlled by you). Typically, you might place Krark’s triggers last so they resolve first, but the order can matter depending on desired interactions.\n\n4. **Resolve triggers in reverse order.** As each trigger resolves:\n   - **Veyran magecraft triggers:** Each gives Veyran +1/+1 until end of turn (for a total of +2/+2 from these two).\n   - **Krark triggers:** For each Krark trigger, flip a coin:\n     - **If you lose the flip:** Return Lightning Bolt to its owner’s hand, but only if it’s still on the stack. If it’s already been returned or left the stack, nothing happens for that trigger.\n     - **If you win the flip:** Create a copy of Lightning Bolt on the stack. You may choose new targets for the copy (or keep the original targets). The original spell remains on the stack.\n\n     If the first Krark trigger returns Lightning Bolt to hand, the second Krark trigger still resolves. If you win the second flip, a copy is created even though the original is gone. If you lose the second flip, nothing happens (since the spell isn’t on the stack to return).\n\n5. **Additional magecraft triggers from copies.** If any Krark trigger creates a copy of Lightning Bolt, that **copy** causes Veyran’s magecraft to trigger again (since copying a spell is an event that satisfies “whenever you copy”). Due to Veyran’s static ability, the magecraft triggers **twice** per copy. Each of these triggers gives Veyran another +1/+1. These triggers are placed on the stack after the copy is created and will resolve before the copy does.\n\n6. **Resolve spells.** Finally, any copies of Lightning Bolt (and the original, if it’s still on the stack) resolve, dealing 3 damage to their respective targets. Note that if the original was returned to hand, it does not resolve.\n\n### Possible Outcomes (depending on coin flips):\n- **Win both Krark flips:** You get two copies of Lightning Bolt (each potentially with new targets) plus the original. Veyran gets +2/+2 from the initial magecraft triggers, and +4/+4 from the two copies (each copy triggers magecraft twice), for a total of +6/+6 until end of turn.\n- **Lose both Krark flips:** Lightning Bolt is returned to your hand (if both triggers resolve while it’s on the stack). Veyran still gets +2/+2 from the initial magecraft triggers. No copies are created.\n- **Mixed results:** If you win one flip and lose the other, you get one copy (if the win resolves after a loss, the copy is created; if the loss resolves after a win, the original may be returned, but the copy remains). Veyran gets initial +2/+2 and additional +2/+2 from the copy’s magecraft triggers.\n\n### Important Notes:\n- The order of resolving Krark triggers matters. If you stack them so the losing flip resolves first, the spell may be returned before the winning flip creates a copy.\n- Krark’s triggers are independent; even if the original spell leaves the stack, winning a flip still creates a copy.\n- Veyran’s additional-trigger effect applies to all triggered abilities caused by casting or copying, including its own magecraft and Krark’s ability, but not to itself (it’s a static ability, not triggered).\n\nThis interaction showcases the chaotic potential of Krark and Veyran together, with coin flips determining the number of spells and buffs Veyran receives."
+  },
+  {
+    "question": "I control [[Krark, the Thumbless]] and [[Veyran, Voice of Duality]]. I cast [[Lightning Bolt]]. What happens if Krark's trigger and Veyran are both relevant to the spell?",
+    "game_id": "mtg",
+    "expected": "Krark triggers once, Veyran does not double Krark because Krark is a triggered ability of a creature you control, not an instant or sorcery spell trigger",
+    "provider": "deepseek-chat",
+    "chunks_used": 7,
+    "latency_s": 51.42,
+    "in_tokens_est": 5663,
+    "out_tokens_est": 1425,
+    "cost_usd": 0.002184,
+    "answer": "Let’s go step by step.\n\n---\n\n**Step 1 – Oracle text of relevant cards**\n\n- **Krark, the Thumbless** –  \n  “Whenever you cast an instant or sorcery spell, flip a coin. If you lose the flip, return that spell to its owner’s hand. If you win the flip, copy that spell, and you may choose new targets for the copy.”\n\n- **Veyran, Voice of Duality** –  \n  “Magecraft — Whenever you cast or copy an instant or sorcery spell, Veyran gets +1/+1 until end of turn.  \n  If you casting or copying an instant or sorcery spell causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.”\n\n- **Lightning Bolt** –  \n  “Lightning Bolt deals 3 damage to any target.”\n\n---\n\n**Step 2 – Official rulings that clarify interactions**\n\nFrom Krark’s rulings:  \n- Krark’s ability triggers when you cast an instant or sorcery spell.  \n- If you win the flip, the copy is created on the stack and resolves before the original spell.  \n- The copy is not cast, so it won’t trigger “when you cast” abilities, but it will trigger “when you copy” abilities (like Veyran’s magecraft).  \n\nFrom Veyran’s rulings:  \n- Veyran’s last ability causes triggered abilities of permanents you control to trigger an additional time **when you cast or copy an instant or sorcery spell**.  \n- This applies to Krark’s triggered ability (since Krark is a permanent you control).  \n- This also applies to Veyran’s own magecraft ability.\n\n---\n\n**Step 3 – Identify every event that could trigger an ability**\n\nEvent: You **cast** Lightning Bolt (targeting something).  \nThis causes:\n\n1. **Krark’s triggered ability** to trigger (“Whenever you cast an instant or sorcery spell…”).  \n2. **Veyran’s magecraft ability** to trigger (“Whenever you cast or copy an instant or sorcery spell…”).  \n3. **Veyran’s last ability** (static) modifies how many times triggered abilities trigger:  \n   - Because you **cast** Lightning Bolt, and that causes Krark’s ability to trigger, Krark’s ability triggers **an additional time** (so twice total).  \n   - Because you **cast** Lightning Bolt, and that causes Veyran’s own magecraft ability to trigger, Veyran’s magecraft ability triggers **an additional time** (so twice total).\n\nSo before any flips, from the **cast** alone:  \n- Krark triggers ×2.  \n- Veyran magecraft triggers ×2.\n\n---\n\n**Step 4 – List each triggered ability separately and apply “additional trigger” effects**\n\nWe put triggers on the stack in APNAP order (you control all, so you choose order among your own triggers).  \nLet’s assume you stack them so you resolve Krark triggers first.\n\n**First Krark trigger:** Flip a coin.  \n- **Win:** Copy Lightning Bolt (copy is not cast, but copying a spell triggers Veyran’s magecraft).  \n- **Lose:** Return Lightning Bolt to hand (if still on stack).\n\n**Second Krark trigger:** Flip a coin again.  \n- Same win/lose effects.\n\n---\n\n**Step 5 – Account for copying causing more triggers**\n\nIf you win a Krark flip and create a copy of Lightning Bolt:  \n- Copying a spell triggers Veyran’s magecraft (“whenever you … copy an instant or sorcery spell”).  \n- Veyran’s last ability says: copying a spell causes triggered abilities of permanents you control to trigger an additional time.  \n- But here, the triggered ability in question is **Veyran’s magecraft** itself (since copying triggers magecraft). So magecraft triggers twice for each copy event.\n\nSo each time you copy Lightning Bolt (from winning a Krark flip), Veyran’s magecraft triggers twice.\n\n---\n\n**Step 6 – Walk through possible coin flip outcomes**\n\nLet’s assume you win both Krark flips (best case for triggers):\n\n1. Cast Lightning Bolt →  \n   - Krark triggers ×2 (due to Veyran’s static).  \n   - Veyran magecraft triggers ×2 (due to Veyran’s static).\n\n2. Put triggers on stack:  \n   Resolve first Krark trigger: win → copy Lightning Bolt.  \n   Copy event → Veyran magecraft triggers ×2 (copy causes magecraft ×2).  \n\n   Resolve second Krark trigger: win → copy Lightning Bolt again.  \n   Copy event → Veyran magecraft triggers ×2 again.\n\n3. Also, original Veyran magecraft triggers from the cast (×2) still waiting on stack.\n\nSo total magecraft triggers:  \n- From cast: 2  \n- From first copy: 2  \n- From second copy: 2  \nTotal = 6 magecraft triggers → Veyran gets +6/+6 until end of turn.\n\nSpells on stack at end:  \n- Original Lightning Bolt  \n- First copy (resolves first)  \n- Second copy (resolves before original)  \nAll can have different targets if you choose.\n\n---\n\n**Step 7 – Count total explicitly before final answer**\n\nIn the scenario where you win both Krark flips:  \n- **Krark triggers**: 2 (both win).  \n- **Veyran magecraft triggers**: 6.  \n- **Lightning Bolt copies created**: 2.  \n- **Total spells to resolve**: 3 Lightning Bolt effects (1 original + 2 copies).\n\nIf you lose one or both flips, Lightning Bolt could be returned to hand, reducing copies, but triggers still happen (Krark’s triggers happen even if original spell is countered or returned).\n\n---\n\n**Final Answer:**\n\nWhen you cast Lightning Bolt with Krark and Veyran on the battlefield:\n\n1. Krark’s ability triggers twice (due to Veyran).  \n2. Veyran’s magecraft triggers twice from the cast (due to Veyran).  \n3. Each time you win a Krark flip and copy Lightning Bolt, Veyran’s magecraft triggers twice per copy.  \n4. If you win both flips, you end up with 2 extra copies of Bolt and 6 total magecraft triggers (+6/+6 to Veyran).  \n5. If you lose a flip, the original Bolt may return to hand, but Krark’s triggers still resolve (no copy made for that flip).  \n\nSo the exact outcome depends on coin flips, but Krark always triggers twice, and magecraft triggers at least twice from the cast, plus more if copies are made."
+  },
+  {
+    "question": "I control [[Strionic Resonator]] and [[Roaming Throne]] naming Vampire. [[Sanguine Bond]] triggers from me gaining life. Can I copy the trigger, and if so how many life-loss triggers happen for my opponent?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Strionic Resonator]] and [[Roaming Throne]] naming Vampire. [[Sanguine Bond]] triggers from me gaining life. Can I copy the trigger, and if so how many life-loss triggers happen for my opponent?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Strionic Resonator]] and [[Roaming Throne]] naming Vampire. [[Sanguine Bond]] triggers from me gaining life. Can I copy the trigger, and if so how many life-loss triggers happen for my opponent?",
+    "game_id": "mtg",
+    "expected": "Roaming Throne does not interact with Sanguine Bond unless it shares the chosen creature type; Strionic Resonator can copy the triggered ability once, so the opponent loses life twice total",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 7,
+    "latency_s": 123.36,
+    "in_tokens_est": 5669,
+    "out_tokens_est": 264,
+    "cost_usd": 0.003696,
+    "answer": "Yes, you can copy the Sanguine Bond trigger with Strionic Resonator. Your opponent will lose life from two triggers: the original and the copy. Roaming Throne does not cause Sanguine Bond's ability to trigger an additional time because Sanguine Bond is an enchantment, not a creature.\n\n**Step-by-step reasoning:**\n\n- **Sanguine Bond's ability** triggers once when you gain life (a single life-gaining event).\n- **Roaming Throne** only affects triggered abilities of creatures you control of the chosen type (Vampire). Since Sanguine Bond is not a creature, Roaming Throne does not cause its ability to trigger an additional time.\n- **Strionic Resonator** can target the triggered ability from Sanguine Bond on the stack. Activating it creates a copy of that ability, which is placed on the stack as a separate instance.\n- Both the original ability and the copy will resolve, each causing the targeted opponent to lose life equal to the amount of life you gained in the triggering event.\n\nThus, the opponent loses life twice, each time from a separate trigger."
+  },
+  {
+    "question": "I control [[Strionic Resonator]] and [[Roaming Throne]] naming Vampire. [[Sanguine Bond]] triggers from me gaining life. Can I copy the trigger, and if so how many life-loss triggers happen for my opponent?",
+    "game_id": "mtg",
+    "expected": "Roaming Throne does not interact with Sanguine Bond unless it shares the chosen creature type; Strionic Resonator can copy the triggered ability once, so the opponent loses life twice total",
+    "provider": "deepseek-chat",
+    "chunks_used": 7,
+    "latency_s": 30.11,
+    "in_tokens_est": 5669,
+    "out_tokens_est": 835,
+    "cost_usd": 0.001938,
+    "answer": "Let’s go step by step.\n\n---\n\n**a) Oracle text of each card involved**\n\n1. **Strionic Resonator**  \n   {2}, {T}: Copy target triggered ability you control. You may choose new targets for the copy.\n\n2. **Roaming Throne**  \n   As this creature enters, choose a creature type.  \n   This creature is the chosen type in addition to its other types.  \n   If a triggered ability of another creature you control of the chosen type triggers, it triggers an additional time.  \n   Ward {2}  \n   4/4\n\n3. **Sanguine Bond**  \n   Whenever you gain life, target opponent loses that much life.\n\n---\n\n**b) Official rulings that clarify**\n\n- **Roaming Throne**: Its last ability doesn’t copy the triggered ability; it causes the ability to trigger an additional time.  \n- **Strionic Resonator**: Copies a triggered ability that is already on the stack.  \n- **Sanguine Bond**: Each life-gaining event causes one trigger (unless multiple creatures with lifelink deal damage simultaneously, each is a separate event).  \n- **Roaming Throne** with two copies of the same type: If you control two Roaming Thrones with the same chosen type, triggered abilities of other creatures you control of that type trigger three times (original + 2 additional).  \n\n---\n\n**c) Identify every event that could trigger an ability**\n\nWe start with:  \n- You control **Roaming Throne** naming Vampire.  \n- **Sanguine Bond** is not a creature, so Roaming Throne’s ability does **not** apply to Sanguine Bond’s triggers.  \n- **Strionic Resonator** is an artifact, not a Vampire, so Roaming Throne also doesn’t apply to its abilities.\n\nSo:  \n1. You gain life (say from a Vampire with lifelink dealing damage).  \n2. **Sanguine Bond** triggers: “Whenever you gain life, target opponent loses that much life.”  \n3. Roaming Thone’s ability only affects triggered abilities of **other creatures you control of the chosen type**.  \n   - Sanguine Bond is not a creature → no extra trigger from Roaming Throne.  \n   - The lifelink creature causing the life gain might have its own triggered ability (e.g., “Whenever this creature deals damage, you gain 1 life”), but that’s not Sanguine Bond.  \n   - In this scenario, the life gain is from lifelink (static ability), not a triggered ability, so Roaming Throne doesn’t apply to the lifelink event itself.\n\nThus: **One Sanguine Bond trigger** from the life-gain event.\n\n---\n\n**d) List each triggered ability separately**\n\n- Original trigger: Sanguine Bond’s ability goes on the stack.\n\n---\n\n**e) Apply any “additional trigger” or “double trigger” effects**\n\nRoaming Thone does **not** apply to Sanguine Bond (not a creature).  \nSo no extra trigger from Roaming Throne.\n\n---\n\n**f) Count the total explicitly before giving the final answer**\n\nWe have **1 Sanguine Bond trigger** on the stack.  \nYou can activate **Strionic Resonator** targeting that triggered ability.  \nResonator copies it, putting another instance of “Whenever you gain life, target opponent loses that much life” on the stack.  \nYou may choose new targets for the copy (same or different opponent).\n\nSo total triggers causing life loss: **2** (original + copy).\n\n---\n\n**Final answer:**  \nYes, you can copy the Sanguine Bond trigger with Strionic Resonator.  \n**Two life-loss triggers** happen for your opponent (or possibly split between opponents if you choose different targets)."
+  },
+  {
+    "question": "I control [[The Peregrine Dynamo]] and [[Kalamax, the Stormsire]]. I cast an instant during my turn while Kalamax is tapped. How many copies of that instant are created?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[The Peregrine Dynamo]] and [[Kalamax, the Stormsire]]. I cast an instant during my turn while Kalamax is tapped. How many copies of that instant are created?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[The Peregrine Dynamo]] and [[Kalamax, the Stormsire]]. I cast an instant during my turn while Kalamax is tapped. How many copies of that instant are created?",
+    "game_id": "mtg",
+    "expected": "Kalamax copies the first instant you cast each turn if it is tapped, and Peregrine Dynamo does not copy Kalamax because it only works on legendary creature spells you control, so 1 copy is created",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 3,
+    "latency_s": 94.67,
+    "in_tokens_est": 2351,
+    "out_tokens_est": 117,
+    "cost_usd": 0.001549,
+    "answer": "When you cast an instant spell while Kalamax, the Stormsire is tapped, its first ability triggers. You can then activate The Peregrine Dynamo's ability, targeting that triggered ability. The Dynamo creates a copy of Kalamax's triggered ability, which resolves first and copies the instant spell. Then the original triggered ability resolves and creates another copy of the instant spell. This results in two copies of the instant spell.\n\n**Answer: 2 copies are created.**"
+  },
+  {
+    "question": "I control [[The Peregrine Dynamo]] and [[Kalamax, the Stormsire]]. I cast an instant during my turn while Kalamax is tapped. How many copies of that instant are created?",
+    "game_id": "mtg",
+    "expected": "Kalamax copies the first instant you cast each turn if it is tapped, and Peregrine Dynamo does not copy Kalamax because it only works on legendary creature spells you control, so 1 copy is created",
+    "provider": "deepseek-chat",
+    "chunks_used": 3,
+    "latency_s": 21.48,
+    "in_tokens_est": 2351,
+    "out_tokens_est": 612,
+    "cost_usd": 0.000915,
+    "answer": "Let’s go step by step.  \n\n---\n\n**a) Oracle text of each card involved**  \n\n**The Peregrine Dynamo**  \nLegendary Artifact Creature — Construct  \nHaste  \n{1}, {T}: Copy target activated or triggered ability you control from another legendary source that's not a commander. You may choose new targets for the copy. (Mana abilities can't be targeted.)  \n\n**Kalamax, the Stormsire**  \nLegendary Creature — Elemental Dinosaur  \nWhenever you cast your first instant spell each turn, if Kalamax is tapped, copy that spell. You may choose new targets for the copy.  \nWhenever you copy an instant spell, put a +1/+1 counter on Kalamax.  \n\n---\n\n**b) Official rulings that clarify**  \n\nFrom Kalamax’s rulings:  \n- If Kalamax is tapped as you cast your first instant spell, its first ability triggers.  \n- The copy is created even if the original spell is countered.  \n- The copy is created on the stack, not cast.  \n\nFrom The Peregrine Dynamo’s rulings:  \n- It can copy a triggered ability you control from another legendary source.  \n- It targets an ability on the stack and creates another instance of that ability on the stack.  \n\n---\n\n**c) Identify EVERY event that could trigger an ability**  \n\n1. I cast an instant spell while Kalamax is tapped.  \n   - This triggers Kalamax’s first ability: “Whenever you cast your first instant spell each turn, if Kalamax is tapped, copy that spell.”  \n\n---\n\n**d) List each triggered ability separately**  \n\nOnly one triggered ability here: Kalamax’s first ability goes on the stack.  \n\n---\n\n**e) Apply any “additional trigger” or “double trigger” effects**  \n\nThe Peregrine Dynamo can copy a triggered ability I control from another legendary source (Kalamax is legendary).  \nSo after Kalamax’s ability triggers and goes on the stack, I can activate Dynamo’s ability targeting Kalamax’s triggered ability.  \n\nDynamo’s ability resolves, creating a copy of Kalamax’s triggered ability on the stack.  \n\nNow there are two instances of Kalamax’s triggered ability on the stack (original and copy).  \n\nWhen each resolves, each will copy the original instant spell once.  \n\n---\n\n**f) Count the total explicitly before giving the final answer**  \n\n- Original Kalamax trigger resolves → 1 copy of the instant spell.  \n- Dynamo’s copy of Kalamax’s trigger resolves → 1 more copy of the instant spell.  \n\nTotal copies of the instant spell created: **2**.  \n\n---\n\n**Final answer:**  \n**2 copies of the instant spell are created.**"
+  },
+  {
+    "question": "I control [[Anointed Procession]] and [[Academy Manufactor]]. I create one Clue token. How many total tokens do I get?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Anointed Procession]] and [[Academy Manufactor]]. I create one Clue token. How many total tokens do I get?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Anointed Procession]] and [[Academy Manufactor]]. I create one Clue token. How many total tokens do I get?",
+    "game_id": "mtg",
+    "expected": "Anointed Procession doubles token creation, and Academy Manufactor replaces the single artifact token creation with one Clue, one Food, and one Treasure, then Procession doubles each, for 6 tokens total",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 1,
+    "latency_s": 63.85,
+    "in_tokens_est": 1157,
+    "out_tokens_est": 1,
+    "cost_usd": 0.000639,
+    "answer": "6"
+  },
+  {
+    "question": "I control [[Anointed Procession]] and [[Academy Manufactor]]. I create one Clue token. How many total tokens do I get?",
+    "game_id": "mtg",
+    "expected": "Anointed Procession doubles token creation, and Academy Manufactor replaces the single artifact token creation with one Clue, one Food, and one Treasure, then Procession doubles each, for 6 tokens total",
+    "provider": "deepseek-chat",
+    "chunks_used": 1,
+    "latency_s": 42.46,
+    "in_tokens_est": 1157,
+    "out_tokens_est": 1164,
+    "cost_usd": 0.000813,
+    "answer": "Let’s go step by step.  \n\n**a) Oracle text of each card involved:**  \n\n- **Anointed Procession** – “If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead.”  \n- **Academy Manufactor** – “If you would create a Clue, Food, or Treasure token, instead create one of each.”  \n\n**b) Official rulings relevant:**  \n\nFrom Academy Manufactor rulings:  \n- Ruling 1: If you control one Academy Manufactor and would create some number of Clue, Food, or Treasure tokens, you will instead create that many Clue tokens, that many Food tokens, and that many Treasure tokens.  \n\nFrom Anointed Procession rulings:  \n- Ruling 5: If you control two Anointed Processions, then the number of tokens created is four times the original number. (But here we have one Procession and one Manufactor, not two Processions.)  \n\n**c) Identify replacement effects and order:**  \n\nBoth are replacement effects that can apply to the same event (creating a Clue token).  \nThe affected player (me) chooses the order to apply them (CR 616.1).  \n\n**d) Apply replacements in chosen order:**  \n\n**Option 1: Apply Manufactor first, then Procession.**  \n\n1. Original event: “Create one Clue token.”  \n2. Apply Manufactor: Instead of creating one Clue token, create one Clue, one Food, one Treasure.  \n3. Apply Procession to each of those three separate token creations:  \n   - “Create one Clue token” → doubled → 2 Clues.  \n   - “Create one Food token” → doubled → 2 Food.  \n   - “Create one Treasure token” → doubled → 2 Treasure.  \n4. Total tokens: 2 Clues + 2 Food + 2 Treasure = **6 tokens**.  \n\n**Option 2: Apply Procession first, then Manufactor.**  \n\n1. Original event: “Create one Clue token.”  \n2. Apply Procession: Doubled → “Create two Clue tokens.”  \n3. Apply Manufactor to each Clue token creation?  \n   - Manufactor’s replacement effect applies to “If you would create a Clue, Food, or Treasure token…”  \n   - Here, after Procession, the event is “create two Clue tokens.”  \n   - Manufactor can apply to each individual token creation, but they are part of the same effect creating multiple tokens simultaneously.  \n   - According to CR 616.1f, if a replacement effect would apply to multiple events in a sequence, the affected player chooses which to apply to which event.  \n   - But Manufactor says “If you would create a Clue, Food, or Treasure token, instead create one of each.”  \n   - If we apply Manufactor to the first Clue token in that batch: Instead of creating that one Clue token, create one Clue, one Food, one Treasure.  \n   - That means the original “create two Clues” becomes:  \n     - First Clue replaced → 1 Clue, 1 Food, 1 Treasure.  \n     - Second Clue still pending.  \n   - Then Procession already applied, so no further doubling unless another replacement applies.  \n   - But wait, Procession already applied to the original event, so it won’t apply again to the new tokens from Manufactor unless Manufactor’s effect is itself a token-creating effect that gets doubled.  \n\nActually, let’s check carefully:  \n\n**Option 2 detailed:**  \n\nStep 1: Original event: create 1 Clue token.  \nStep 2: Apply Procession: “create twice that many” → create 2 Clue tokens.  \nStep 3: Now Manufactor sees each of those 2 Clue token creations as separate events (since they are part of the same effect but Manufactor can apply to each).  \n\nFor the first Clue token creation:  \nManufactor replaces it with “create one Clue, one Food, one Treasure.”  \n\nFor the second Clue token creation:  \nManufactor replaces it with “create one Clue, one Food, one Treasure.”  \n\nNow, Procession already applied to the original creation event, but these new token creations are from Manufactor’s replacement effect, which is itself a token-creating effect.  \nProcession says “If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead.”  \nSo Procession will apply to each of these new token-creating events from Manufactor.  \n\nThus:  \n\nFirst Manufactor replacement: “create one Clue, one Food, one Treasure” → Procession doubles each → 2 Clues, 2 Food, 2 Treasure.  \nSecond Manufactor replacement: “create one Clue, one Food, one Treasure” → Procession doubles each → 2 Clues, 2 Food, 2 Treasure.  \n\nTotal: 4 Clues + 4 Food + 4 Treasure = **12 tokens**.  \n\n**e) Which order is correct?**  \n\nThe player chooses the order. Since both are replacement effects the player controls, they choose the order (CR 616.1).  \nThe order that results in more tokens is **Option 2** (Procession first, then Manufactor).  \n\n**f) Count total:**  \n\n12 tokens.  \n\n**Final answer:**  \n\n\\[\n\\boxed{12}\n\\]"
+  },
+  {
+    "question": "I control [[Panharmonicon]] and [[Brago, King Eternal]]. Brago deals combat damage to a player. How many permanents do I blink?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Panharmonicon]] and [[Brago, King Eternal]]. Brago deals combat damage to a player. How many permanents do I blink?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Panharmonicon]] and [[Brago, King Eternal]]. Brago deals combat damage to a player. How many permanents do I blink?",
+    "game_id": "mtg",
+    "expected": "Panharmonicon does not double Brago's combat damage trigger because it is not an ETB or artifact/creature trigger from a permanent entering the battlefield, so 1 trigger resolves",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 8,
+    "latency_s": 72.3,
+    "in_tokens_est": 5590,
+    "out_tokens_est": 112,
+    "cost_usd": 0.00332,
+    "answer": "Brago's triggered ability is not affected by Panharmonicon, as Panharmonicon only causes additional triggers when an artifact or creature enters the battlefield, not when a creature deals combat damage. Therefore, Brago's ability triggers once, and you may exile any number of target nonland permanents you control (including Brago and Panharmonicon), then return them to the battlefield. The exact number is chosen by you when the ability resolves."
+  },
+  {
+    "question": "I control [[Panharmonicon]] and [[Brago, King Eternal]]. Brago deals combat damage to a player. How many permanents do I blink?",
+    "game_id": "mtg",
+    "expected": "Panharmonicon does not double Brago's combat damage trigger because it is not an ETB or artifact/creature trigger from a permanent entering the battlefield, so 1 trigger resolves",
+    "provider": "deepseek-chat",
+    "chunks_used": 8,
+    "latency_s": 23.34,
+    "in_tokens_est": 5590,
+    "out_tokens_est": 736,
+    "cost_usd": 0.001874,
+    "answer": "Let’s go step by step.\n\n---\n\n**a) Oracle text of each card involved**\n\n- **Panharmonicon** (Artifact)  \n  “If an artifact or creature entering the battlefield causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.”\n\n- **Brago, King Eternal** (Legendary Creature — Spirit Noble)  \n  “Flying  \n  Whenever Brago deals combat damage to a player, exile any number of target nonland permanents you control, then return those cards to the battlefield under their owner’s control.”\n\n---\n\n**b) Official rulings that clarify**\n\nFrom Panharmonicon’s rulings:  \n- It affects triggered abilities that start with “when” or “whenever.”  \n- It doesn’t copy the ability, but causes it to trigger an additional time.  \n- If you control two Panharmonicons, the ability triggers three times total (once original + N additional times, where N = number of Panharmonicons).  \n- It works even if the artifact or creature entering is the same permanent whose ability triggered (relevant for Brago blinking himself).\n\nFrom Brago’s rulings:  \n- You may exile and return Brago using his own ability.  \n- The ability triggers once when he deals combat damage.\n\n---\n\n**c) Identify every event that could trigger an ability**\n\n1. Brago deals combat damage to a player → triggers Brago’s ability “Whenever Brago deals combat damage to a player, …”\n\n---\n\n**d) List each triggered ability separately**\n\n- Original trigger: “Whenever Brago deals combat damage to a player, exile any number of target nonland permanents you control, then return those cards to the battlefield under their owner’s control.”\n\n---\n\n**e) Apply any “additional trigger” or “double trigger” effects**\n\nPanharmonicon says: “If an artifact or creature entering the battlefield causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.”\n\nImportant: Panharmonicon’s effect only applies **when an artifact or creature entering the battlefield** causes a triggered ability to trigger.  \nBrago’s ability triggers from **Brago dealing combat damage**, not from an artifact or creature entering the battlefield.  \nTherefore, Panharmonicon does **not** cause Brago’s ability to trigger an additional time in this scenario.\n\n---\n\n**f) Count the total explicitly before giving the final answer**\n\nBrago’s ability triggers **once** when he deals combat damage.  \nPanharmonicon does not apply here.  \nSo you get **one** instance of the triggered ability resolving.\n\nWhen that ability resolves, you choose **any number** of target nonland permanents you control (including Brago himself, if you wish).  \nThe number of permanents blinked is exactly the number you targeted (which could be zero, one, or many).\n\n---\n\n**Final answer:**  \nYou blink **as many permanents as you choose to target** with Brago’s single triggered ability. Panharmonicon does not cause Brago’s ability to trigger extra times in this situation."
+  },
+  {
+    "question": "I control [[Blood Artist]] and [[Teysa Karlov]]. A creature token I control dies. How many life-loss and life-gain triggers happen?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Blood Artist]] and [[Teysa Karlov]]. A creature token I control dies. How many life-loss and life-gain triggers happen?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Blood Artist]] and [[Teysa Karlov]]. A creature token I control dies. How many life-loss and life-gain triggers happen?",
+    "game_id": "mtg",
+    "expected": "Blood Artist triggers twice because Teysa doubles triggered abilities of creatures dying, so each trigger makes one player lose 1 and you gain 1 for a total of 2 life lost and 2 life gained",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 8,
+    "latency_s": 32.97,
+    "in_tokens_est": 6493,
+    "out_tokens_est": 76,
+    "cost_usd": 0.003738,
+    "answer": "When your creature token dies while you control both Blood Artist and Teysa Karlov, Blood Artist's triggered ability triggers twice due to Teysa's effect. Each instance causes a target player to lose 1 life and you to gain 1 life. Therefore, there are **two life-loss triggers and two life-gain triggers**."
+  },
+  {
+    "question": "I control [[Blood Artist]] and [[Teysa Karlov]]. A creature token I control dies. How many life-loss and life-gain triggers happen?",
+    "game_id": "mtg",
+    "expected": "Blood Artist triggers twice because Teysa doubles triggered abilities of creatures dying, so each trigger makes one player lose 1 and you gain 1 for a total of 2 life lost and 2 life gained",
+    "provider": "deepseek-chat",
+    "chunks_used": 8,
+    "latency_s": 23.85,
+    "in_tokens_est": 6493,
+    "out_tokens_est": 647,
+    "cost_usd": 0.00209,
+    "answer": "Let’s go step by step.\n\n---\n\n**Step 1 – Oracle text of relevant cards**\n\n- **Blood Artist** (creature)  \n  “Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.”\n\n- **Teysa Karlov** (creature)  \n  “If a creature dying causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.  \n  Creature tokens you control have vigilance and lifelink.”\n\n---\n\n**Step 2 – Identify the event**  \nA creature token I control dies.  \nThis is a “creature dying” event (it goes from battlefield to graveyard, and it was a creature).\n\n---\n\n**Step 3 – Determine triggered abilities from this event**  \nBlood Artist has a triggered ability:  \n“Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.”  \nThis ability triggers once for that creature’s death.\n\n---\n\n**Step 4 – Apply Teysa Karlov’s effect**  \nTeysa says: If a creature dying causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.  \nHere, the creature dying **does** cause Blood Artist’s ability to trigger.  \nSo Blood Artist’s ability triggers **twice** (original + one additional time).\n\n---\n\n**Step 5 – Count triggers**  \nTwo instances of Blood Artist’s triggered ability go on the stack.  \nEach instance causes:  \n- Target player loses 1 life  \n- You gain 1 life  \n\nSo **two life-loss events** and **two life-gain events** will happen when these resolve (assuming both resolve normally).\n\n---\n\n**Step 6 – Check for any other triggered abilities**  \nThe token itself has no “when this creature dies” ability mentioned.  \nTeysa’s ability is static, not triggered, so no extra triggers from Teysa’s own trigger.  \nNo other permanents with relevant triggers are mentioned.\n\n---\n\n**Step 7 – Official rulings check**  \nBlood Artist’s ruling says: If Blood Artist and one or more other creatures die at the same time, its ability triggers for each of those creatures.  \nThat’s not relevant here (only the token dies).  \n\nTeysa’s ruling #2: The ability triggers twice, not copied; choices (targets) made separately for each instance.  \nSo we must choose a target player for each of the two triggers (could be same or different player).  \n\nTeysa’s ruling #8: Even if Teysa dies at the same time, her effect still applies if she was on the battlefield when the creature died. Here, Teysa is alive, so fine.\n\n---\n\n**Final answer:**  \n**Two life-loss triggers and two life-gain triggers happen.**  \n\n\\[\n\\boxed{2\\ \\text{life-loss triggers,}\\ 2\\ \\text{life-gain triggers}}\n\\]"
+  },
+  {
+    "question": "I control [[Notion Thief]] and [[Teferi's Puzzle Box]]. My opponent draws for the turn. What happens to the draw step?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Notion Thief]] and [[Teferi's Puzzle Box]]. My opponent draws for the turn. What happens to the draw step?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Notion Thief]] and [[Teferi's Puzzle Box]]. My opponent draws for the turn. What happens to the draw step?",
+    "game_id": "mtg",
+    "expected": "Notion Thief replaces the draw, so the opponent does not draw normally; if Teferi's Puzzle Box triggers later, it can still force a hand shuffle and redraw sequence, but the turn draw is stolen by Notion Thief",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 5,
+    "latency_s": 122.76,
+    "in_tokens_est": 2078,
+    "out_tokens_est": 303,
+    "cost_usd": 0.001806,
+    "answer": "In the opponent's draw step, the following occurs:\n\n1. **Turn-based draw:** The opponent draws one card as the normal first draw of their draw step. This draw is not replaced by Notion Thief because it is the first draw of the draw step.\n\n2. **Teferi's Puzzle Box triggers:** At the beginning of the draw step, Teferi's Puzzle Box's ability triggers and is put on the stack after the turn-based draw.\n\n3. **Resolution of Puzzle Box:** When the ability resolves, the opponent puts all cards from their hand (including the card just drawn) on the bottom of their library in any order. Let’s say they had **N** cards in hand before the turn-based draw; after drawing, they have **N+1** cards. They put all **N+1** cards on the bottom.\n\n4. **Notion Thief replaces the draws:** The opponent would then draw **N+1** cards, but Notion Thief replaces each of those draws (since they are not the first draw of the draw step). For each draw, the opponent skips it and you draw a card instead. Thus, you draw **N+1** cards, and the opponent draws none.\n\nAs a result, the draw step proceeds, but the opponent ends with an empty hand, and you draw cards equal to the number of cards they had in hand after their initial draw."
+  },
+  {
+    "question": "I control [[Notion Thief]] and [[Teferi's Puzzle Box]]. My opponent draws for the turn. What happens to the draw step?",
+    "game_id": "mtg",
+    "expected": "Notion Thief replaces the draw, so the opponent does not draw normally; if Teferi's Puzzle Box triggers later, it can still force a hand shuffle and redraw sequence, but the turn draw is stolen by Notion Thief",
+    "provider": "deepseek-chat",
+    "chunks_used": 5,
+    "latency_s": 33.37,
+    "in_tokens_est": 2078,
+    "out_tokens_est": 936,
+    "cost_usd": 0.000975,
+    "answer": "Let’s go step by step.  \n\n---\n\n**a) Oracle text of each card involved**  \n\n**Notion Thief** (2UB)  \nCreature — Human Rogue  \nFlash  \nIf an opponent would draw a card except the first one they draw in each of their draw steps, instead that player skips that draw and you draw a card.  \n\n**Teferi’s Puzzle Box** (4)  \nArtifact  \nAt the beginning of each player’s draw step, that player puts the cards in their hand on the bottom of their library in any order, then draws that many cards.  \n\n---\n\n**b) Official rulings that clarify**  \n\nFrom Puzzle Box rulings:  \n- You do your normal draw before this ability is put on the stack.  \n\nFrom Notion Thief rulings:  \n- If an opponent is instructed to draw a card then discard a card, and Notion Thief causes you to draw instead, the opponent still does the other parts of the instruction.  \n\n---\n\n**c) Identify EVERY event that could trigger an ability**  \n\n1. **Draw step begins** → turn-based action: active player draws a card (this is the “first draw” of their draw step).  \n2. **After that draw happens**, state-based actions are checked, then the active player would get priority, but first, triggered abilities waiting to go on the stack are put there.  \n3. **Teferi’s Puzzle Box** triggers at the beginning of the draw step. It triggers for the active player (the opponent, since I control Notion Thief and Puzzle Box, but Puzzle Box triggers for each player on their own draw step).  \n\n---\n\n**d) List each triggered ability separately**  \n\nOnly one triggered ability here:  \n- Teferi’s Puzzle Box’s ability (controlled by me, but it triggers for the opponent’s draw step).  \n\n---\n\n**e) Apply any “additional trigger” or “double trigger” effects**  \n\nNotion Thief is not a triggered ability; it’s a replacement effect.  \n\nSequence:  \n\n1. Opponent’s draw step begins.  \n2. Turn-based action: opponent draws 1 card (this is the “first draw” of their draw step, so Notion Thief does **not** replace it).  \n3. Now Teferi’s Puzzle Box’s ability triggers and goes on the stack.  \n4. When it resolves:  \n   - Opponent puts cards in hand on bottom of library in any order.  \n   - Then opponent draws that many cards.  \n\nHere, each of those draws is **not** the first draw of the draw step, so **Notion Thief replaces each of them**: opponent skips each draw, I draw a card instead.  \n\n---\n\n**f) Count the total explicitly before giving the final answer**  \n\nLet’s say opponent had *N* cards in hand when Puzzle Box’s ability resolved.  \n- Opponent puts N cards on bottom.  \n- Opponent would draw N cards, but Notion Thief replaces each: opponent draws 0, I draw N cards.  \n\nSo final outcome:  \n- Opponent draws 1 card (normal draw step draw), then puts hand on bottom, draws nothing further.  \n- I draw N cards (where N = number of cards opponent had in hand before putting them on bottom).  \n\n---\n\n**Final answer:**  \nThe draw step proceeds normally except that after the opponent’s normal draw, Teferi’s Puzzle Box triggers, and when it resolves, the opponent puts their hand on the bottom, then each card they would draw from that is replaced by you drawing a card instead. The opponent ends the draw step with 0 cards in hand (unless they drew something earlier that they kept, but they put all cards in hand on bottom, so they’d have only the 1 card drawn for turn if they kept it, but Puzzle Box says “puts the cards in their hand on the bottom” — that’s all cards in hand, so they put that 1 drawn card on bottom too before draws are replaced). Wait — careful:  \n\nActually, the 1 card drawn for turn is in their hand when Puzzle Box resolves. So they put that card + any others on bottom. Then they would draw that many, but I draw instead. So opponent ends with 0 cards in hand, I draw N cards."
+  },
+  {
+    "question": "I control [[Ob Nixilis, Captive Kingpin]] and [[Torbran, Thane of Red Fell]]. I deal 1 noncombat damage to an opponent. How much damage do they take and how many Ob Nixilis triggers happen?",
+    "provider": "claude-opus-4-6",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Ob Nixilis, Captive Kingpin]] and [[Torbran, Thane of Red Fell]]. I deal 1 noncombat damage to an opponent. How much damage do they take and how many Ob Nixilis triggers happen?",
+    "provider": "claude-sonnet-4",
+    "error": "ANTHROPIC_API_KEY manquant. Définis-le dans ton .env ou en variable d'environnement."
+  },
+  {
+    "question": "I control [[Ob Nixilis, Captive Kingpin]] and [[Torbran, Thane of Red Fell]]. I deal 1 noncombat damage to an opponent. How much damage do they take and how many Ob Nixilis triggers happen?",
+    "game_id": "mtg",
+    "expected": "Torbran increases red damage by 2, so the damage becomes 3 if the source is red; Ob Nixilis triggers once when an opponent loses life from a source dealing 1 or more damage",
+    "provider": "deepseek-reasoner",
+    "chunks_used": 6,
+    "latency_s": 67.45,
+    "in_tokens_est": 5133,
+    "out_tokens_est": 157,
+    "cost_usd": 0.003167,
+    "answer": "The opponent takes **3 damage** and **0 Ob Nixilis triggers** occur.\n\n### Explanation\n- **Torbran, Thane of Red Fell** has a replacement effect that modifies damage from red sources you control. When you deal 1 noncombat damage to an opponent from a red source, Torbran increases that damage by 2, so the opponent is dealt 3 damage instead.\n- Damage causes loss of life, so the opponent loses 3 life.\n- **Ob Nixilis, Captive Kingpin** triggers only when an opponent loses exactly 1 life. Since the opponent loses 3 life, Ob Nixilis’s ability does not trigger.\n\nThus, the opponent takes 3 damage and no Ob Nixilis triggers happen."
+  },
+  {
+    "question": "I control [[Ob Nixilis, Captive Kingpin]] and [[Torbran, Thane of Red Fell]]. I deal 1 noncombat damage to an opponent. How much damage do they take and how many Ob Nixilis triggers happen?",
+    "game_id": "mtg",
+    "expected": "Torbran increases red damage by 2, so the damage becomes 3 if the source is red; Ob Nixilis triggers once when an opponent loses life from a source dealing 1 or more damage",
+    "provider": "deepseek-chat",
+    "chunks_used": 6,
+    "latency_s": 14.43,
+    "in_tokens_est": 5133,
+    "out_tokens_est": 367,
+    "cost_usd": 0.001591,
+    "answer": "Let’s go step by step.\n\n---\n\n**Step 1 – Oracle text of relevant cards**\n\n- **Ob Nixilis, Captive Kingpin**  \n  Flying, trample  \n  Whenever one or more opponents each lose exactly 1 life, put a +1/+1 counter on Ob Nixilis. Exile the top card of your library. Until your next end step, you may play that card.\n\n- **Torbran, Thane of Red Fell**  \n  If a red source you control would deal damage to an opponent or a permanent an opponent controls, it deals that much damage plus 2 instead.\n\n---\n\n**Step 2 – Initial event**\n\nI control both. I deal 1 noncombat damage to an opponent from a **red source** (e.g., a red spell or red permanent’s ability).\n\n---\n\n**Step 3 – Apply Torbran’s replacement effect**\n\nTorbran sees a red source I control dealing damage to an opponent.  \nOriginal damage: 1  \nTorbran replaces it with “that much damage plus 2” → 1 + 2 = **3 damage**.\n\nSo the opponent is dealt 3 damage.\n\n---\n\n**Step 4 – Damage results in life loss**\n\nDamage dealt to a player causes loss of life equal to the damage dealt (CR 120.3a).  \nOpponent loses 3 life.\n\n---\n\n**Step 5 – Check Ob Nixilis trigger condition**\n\nOb Nixilis triggers when “one or more opponents each lose exactly 1 life.”  \nHere, the opponent lost 3 life, not exactly 1 life.  \nSo **Ob Nixilis does not trigger**.\n\n---\n\n**Step 6 – Count triggers**\n\nNumber of Ob Nixilis triggers: **0**.\n\n---\n\n**Final answer:**\n\nThe opponent takes **3 damage** (and loses 3 life).  \n**No Ob Nixilis triggers** happen."
+  }
+]
