@@ -8,6 +8,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 import torch
 
+EMBEDDING_MODEL = "paraphrase-multilingual-mpnet-base-v2"
+
 if torch.cuda.is_available():
     device = "cuda"
 elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
@@ -23,7 +25,7 @@ CHROMA_DIR = "./chroma_db"
 
 print("📦 Chargement des embeddings...")
 embeddings = HuggingFaceEmbeddings(
-    model_name="all-MiniLM-L6-v2",
+    model_name=EMBEDDING_MODEL,
     model_kwargs={'device': encode_device},
     encode_kwargs={'device': encode_device, 'batch_size': 32}
 )
