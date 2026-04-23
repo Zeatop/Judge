@@ -91,3 +91,9 @@ OAUTH_PROVIDERS = {
         },
     },
 }
+
+ADMIN_EMAILS: set[str] = {
+    e.strip().lower()
+    for e in os.getenv("ADMIN_EMAILS", "").split(",")
+    if e.strip()
+}

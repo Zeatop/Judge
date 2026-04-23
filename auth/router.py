@@ -20,6 +20,7 @@ from auth.config import OAUTH_PROVIDERS, FRONTEND_URL
 from auth.models import get_db, User
 from auth.jwt import create_access_token, get_current_user_id
 from auth.user_service import get_or_create_user
+from auth.config import ADMIN_EMAILS
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -220,6 +221,7 @@ def get_me(
         "avatar_url": user.avatar_url,
         "providers": providers,
         "created_at": user.created_at.isoformat() if user.created_at else None,
+        "is_admin": bool(user.email and user.email.lower() in ADMIN_EMAILS),
     }
 
 

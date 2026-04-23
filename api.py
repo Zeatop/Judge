@@ -21,9 +21,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 # ── Auth ────────────────────────────────────────────────────────────
-from auth import auth_router, init_db as init_auth_db
+from auth import auth_router, init_db as init_auth_db,get_admin_user
 from auth.config import AUTH_SECRET_KEY
 from auth.jwt import get_optional_user_id
+from auth.models import User
 
 # ── Chat ────────────────────────────────────────────────────────────
 from chat import chat_router, connect_mongo, close_mongo
@@ -308,6 +309,7 @@ async def upload_rules(
     file: UploadFile = File(..., description="PDF des règles du jeu"),
     game_id: str = Query(..., description="Identifiant du jeu (ex: 'Risk', 'Uno')"),
     lang: str = Query("fr", description="Langue des règles (ex: 'fr', 'en')"),
+    _admin: User = Depends(get_admin_user),
 ):
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Seuls les fichiers PDF sont acceptés.")

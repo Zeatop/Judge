@@ -82,6 +82,7 @@ pipeline {
                     string(credentialsId: 'GOOGLE_JUDGE_CLIENT_SECRET', variable: 'GOOGLE_CLIENT_SECRET'),
                     string(credentialsId: 'DISCORD_JUDGE_CLIENT_ID', variable: 'DISCORD_CLIENT_ID'),
                     string(credentialsId: 'DISCORD_JUDGE_CLIENT_SECRET', variable: 'DISCORD_CLIENT_SECRET'),
+                    string(credentialsId: 'ADMIN_EMAILS', variable: 'ADMIN_EMAILS'),
                 ]) {
                     sh """
                         kubectl delete secret judge-secrets --ignore-not-found
@@ -98,7 +99,8 @@ pipeline {
                             --from-literal=GOOGLE_JUDGE_CLIENT_ID="\$GOOGLE_CLIENT_ID" \
                             --from-literal=GOOGLE_JUDGE_CLIENT_SECRET="\$GOOGLE_CLIENT_SECRET" \
                             --from-literal=DISCORD_JUDGE_CLIENT_ID="\$DISCORD_CLIENT_ID" \
-                            --from-literal=DISCORD_JUDGE_CLIENT_SECRET="\$DISCORD_CLIENT_SECRET"
+                            --from-literal=DISCORD_JUDGE_CLIENT_SECRET="\$DISCORD_CLIENT_SECRET" \
+                            --from-literal=ADMIN_EMAILS="\$ADMIN_EMAILS"
                     """
                 }
                 sh "sed -i 's|${REGISTRY}/${IMAGE}:latest|${REGISTRY}/${IMAGE}:${TAG}|' k8s/deployment.yaml"
