@@ -27,7 +27,7 @@ print("📦 Chargement des embeddings...")
 embeddings = HuggingFaceEmbeddings(
     model_name=EMBEDDING_MODEL,
     model_kwargs={'device': encode_device},
-    encode_kwargs={'device': encode_device, 'batch_size': 32}
+    encode_kwargs={'device': encode_device, 'batch_size': 32, 'normalize_embeddings': True},
 )
 print("✅ Embeddings chargés")
 
