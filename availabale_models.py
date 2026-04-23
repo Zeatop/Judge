@@ -46,4 +46,4 @@ AVAILABLE_MODELS = [
 ]
 
 MODELS_BY_ID = {m["id"]: m for m in AVAILABLE_MODELS}
-DEFAULT_MODEL_ID = "claude-opus-4-6"
+DEFAULT_MODEL_ID = "deepseek-chat"
