@@ -161,23 +161,45 @@ async def touch_chat(chat_id: str):
     )
 
 
-async def migrate_guest_chats(session_id: str, user_id: str) -> int:
+async def migrate_guest_chats(session_id: str, user_id: str) -> list[dict]:
     """
     Réassigne tous les chats d'un invité à un user authentifié.
     Appelé à l'inscription ou à la connexion si session_id est fourni.
-    Retourne le nombre de chats migrés.
+
+    Retourne la liste des chats migrés (serialisés), triés par updated_at desc.
+    Le premier élément de la liste est donc le chat le plus récemment utilisé
+    par l'invité — c'est celui qu'on veut restaurer automatiquement côté front.
     """
     db = get_db()
-    result = await db.chats.update_many(
+
+    # 1. Récupérer les chats guest AVANT update pour pouvoir les renvoyer
+    #    (et dans l'ordre désiré : plus récent en premier).
+    chats_before: list[dict] = []
+    cursor = db.chats.find({"session_id": session_id}).sort("updated_at", -1)
+    async for doc in cursor:
+        chats_before.append(doc)
+
+    if not chats_before:
+        return []
+
+    # 2. Migration : retirer session_id/guest_expires_at, poser user_id.
+    await db.chats.update_many(
         {"session_id": session_id},
         {
             "$set": {"user_id": user_id},
             "$unset": {"session_id": "", "guest_expires_at": ""},
         },
     )
-    migrated = result.modified_count
-    if migrated:
-        print(f"[CHAT] {migrated} chat(s) migrés de session {session_id[:8]}... → user {user_id}")
+    print(f"[CHAT] {len(chats_before)} chat(s) migrés de session {session_id[:8]}... → user {user_id}")
+
+    # 3. Reconstituer les documents "à jour" pour retour API.
+    #    (pas besoin de re-fetch MongoDB, on applique mentalement les mêmes mutations)
+    migrated: list[dict] = []
+    for doc in chats_before:
+        doc["user_id"] = user_id
+        doc.pop("session_id", None)
+        doc.pop("guest_expires_at", None)
+        migrated.append(_serialize_doc(doc))
     return migrated
 
 

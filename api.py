@@ -121,6 +121,22 @@ class MigrateRequest(BaseModel):
     session_id: str
 
 
+class ChatBrief(BaseModel):
+    """Représentation minimale d'un chat renvoyée après migration."""
+    id: str
+    user_id: str | None = None
+    game_id: str
+    title: str
+    created_at: str
+    updated_at: str
+
+
+class MigrateResponse(BaseModel):
+    migrated: int
+    chats: list[ChatBrief]
+    latest_chat_id: str | None = None
+
+
 class UploadResponse(BaseModel):
     game_id: str
     filename: str
@@ -132,6 +148,22 @@ class UploadResponse(BaseModel):
 def make_chunk_id(game_id: str, index: int, content: str) -> str:
     digest = hashlib.md5(content.encode()).hexdigest()[:8]
     return f"{game_id}_{index}_{digest}"
+
+
+def _iso(v) -> str:
+    """Convertit une date MongoDB en chaîne ISO pour l'API."""
+    return v.isoformat() if hasattr(v, "isoformat") else str(v)
+
+
+def _format_chat_brief(chat: dict) -> ChatBrief:
+    return ChatBrief(
+        id=chat["id"],
+        user_id=chat.get("user_id"),
+        game_id=chat["game_id"],
+        title=chat["title"],
+        created_at=_iso(chat["created_at"]),
+        updated_at=_iso(chat["updated_at"]),
+    )
 
 
 # ── Endpoints ────────────────────────────────────────────────────────
@@ -329,8 +361,8 @@ Answer:"""
     )
 
 
-@app.post("/chats/migrate", status_code=200)
-async def migrate_guest_chats(
+@app.post("/chats/migrate", response_model=MigrateResponse, status_code=200)
+async def migrate_guest_chats_endpoint(
     req: MigrateRequest,
     user_id: str = Depends(get_optional_user_id),
 ):
@@ -338,6 +370,13 @@ async def migrate_guest_chats(
     Migre les chats invités vers le compte de l'utilisateur connecté.
     À appeler depuis le frontend juste après la connexion / inscription OAuth
     si un session_id était actif côté client.
+
+    Retourne :
+      - migrated        : nombre de chats migrés
+      - chats           : liste complète des chats migrés (triés updated_at desc)
+      - latest_chat_id  : ID du chat le plus récemment utilisé par le guest,
+                          ou None si rien à migrer. Sert au frontend pour
+                          restaurer automatiquement le chat en cours.
     """
     if not user_id:
         raise HTTPException(status_code=401, detail="Authentification requise.")
@@ -345,8 +384,13 @@ async def migrate_guest_chats(
         raise HTTPException(status_code=400, detail="session_id manquant.")
 
     from chat.mongo_service import migrate_guest_chats as _migrate
-    count = await _migrate(session_id=req.session_id, user_id=user_id)
-    return {"migrated": count}
+    chats = await _migrate(session_id=req.session_id, user_id=user_id)
+
+    return MigrateResponse(
+        migrated=len(chats),
+        chats=[_format_chat_brief(c) for c in chats],
+        latest_chat_id=chats[0]["id"] if chats else None,
+    )
 
 
 @app.post("/upload", response_model=UploadResponse)
