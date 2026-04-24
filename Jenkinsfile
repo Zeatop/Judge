@@ -89,6 +89,7 @@ pipeline {
                         kubectl create secret generic judge-secrets \
                             --from-literal=JUDGE_DATABASE_URL="\$DATABASE_URL" \
                             --from-literal=API_BASE_URL="https://api.judgeai.app" \
+                            --from-literal=COOKIE_DOMAIN=".judgeai.app" \
                             --from-literal=MONGO_URI="\$MONGO_URI" \
                             --from-literal=ANTHROPIC_API_KEY="\$ANTHROPIC_API_KEY" \
                             --from-literal=DEEPSEEK_API_KEY="\$DEEPSEEK_API_KEY" \
