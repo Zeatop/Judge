@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 # ── Auth ────────────────────────────────────────────────────────────
-from auth import auth_router, init_db as init_auth_db,get_admin_user
+from auth import auth_router, init_db as init_auth_db, get_admin_user
 from auth.config import AUTH_SECRET_KEY
 from auth.jwt import get_optional_user_id
 from auth.models import User
@@ -30,13 +30,12 @@ from auth.models import User
 from chat import chat_router, connect_mongo, close_mongo
 from chat.mongo_service import add_message, create_chat, get_recent_exchanges
 
-# ── LLM ────────────────────────────────────────────────────────────
-
+# ── LLM ─────────────────────────────────────────────────────────────
 from llm_provider import get_cached_provider
 from llm_provider import _PROVIDER_CACHE
 from availabale_models import AVAILABLE_MODELS, MODELS_BY_ID, DEFAULT_MODEL_ID
 
-# ── RAG ────────────────────────────────────────────────────────────
+# ── RAG ─────────────────────────────────────────────────────────────
 from rag_core import (
     GAME_PROMPTS,
     DEFAULT_PROMPT,
@@ -44,32 +43,29 @@ from rag_core import (
     extract_and_fetch_cards,
 )
 
-# ── App ─────────────────────────────────────────────────────────────
+# ── App ──────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Board Game Rules RAG",
     description="Pose des questions sur les règles de jeux de société. "
                 "Pour MTG, utilise [[nom de carte]] pour inclure le texte Oracle + rulings.",
-    version="2.4.0",
+    version="2.5.0",
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", os.getenv("FRONTEND_URL", "http://192.168.1.159:30090")],  # port Vite par défaut
+    allow_origins=["http://localhost:5173", os.getenv("FRONTEND_URL", "http://192.168.1.159:30090")],
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_credentials=True,  # Nécessaire pour les cookies de session OAuth
+    allow_credentials=True,
 )
-# SessionMiddleware requis par Authlib pour stocker le state/code temporaire
 app.add_middleware(SessionMiddleware, secret_key=AUTH_SECRET_KEY)
 
-# Monter les routers
 app.include_router(auth_router)
 app.include_router(chat_router)
 
-# Initialiser la DB users au démarrage
 init_auth_db()
 
 
-# ── Lifecycle (MongoDB) ────────────────────────────────────────────
+# ── Lifecycle (MongoDB) ──────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
     await connect_mongo()
@@ -80,15 +76,17 @@ async def shutdown():
     await close_mongo()
 
 
-# ── Dossier d'upload ────────────────────────────────────────────────
+# ── Dossier d'upload ─────────────────────────────────────────────────
 UPLOAD_DIR = "./rules/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# ── Schemas ─────────────────────────────────────────────────────────
+
+# ── Schemas ──────────────────────────────────────────────────────────
 class AskRequest(BaseModel):
     question: str
     game_id: str | None = None
     chat_id: str | None = None
+    session_id: str | None = None  # UUID généré côté frontend pour les invités
     model_id: str | None = None
     k: int = 8
     threshold: float = 1.2
@@ -101,6 +99,7 @@ class AskRequest(BaseModel):
                                 "In response, he sacrifices it. What happens?",
                     "game_id": "mtg",
                     "chat_id": "6651f2a3b1c2d3e4f5a6b7c8",
+                    "session_id": None,
                     "k": 8,
                     "threshold": 1.2,
                 }
@@ -118,20 +117,24 @@ class AskResponse(BaseModel):
     chat_id: str | None = None
 
 
+class MigrateRequest(BaseModel):
+    session_id: str
+
+
 class UploadResponse(BaseModel):
     game_id: str
     filename: str
     chunks_indexed: int
     total_chunks: int
 
-# ── Helpers ─────────────────────────────────────────────────────────
+
+# ── Helpers ──────────────────────────────────────────────────────────
 def make_chunk_id(game_id: str, index: int, content: str) -> str:
     digest = hashlib.md5(content.encode()).hexdigest()[:8]
     return f"{game_id}_{index}_{digest}"
-    
 
 
-# ── Endpoints ───────────────────────────────────────────────────────
+# ── Endpoints ────────────────────────────────────────────────────────
 @app.post("/ask", response_model=AskResponse)
 async def ask(
     req: AskRequest,
@@ -140,13 +143,16 @@ async def ask(
     """
     Pose une question sur les règles d'un jeu.
     Pour MTG, utilise [[nom de carte]] pour inclure automatiquement le texte Oracle + rulings.
-    Si chat_id est fourni, les 3 derniers échanges sont injectés pour le suivi de conversation.
-    Les messages sont automatiquement persistés en MongoDB si l'utilisateur est authentifié.
+
+    Persistance selon le contexte :
+      - Authentifié (user_id présent)  → chat lié au compte, historique permanent
+      - Invité (session_id présent)    → chat lié à la session, TTL 30 jours
+      - Anonyme (aucun des deux)       → pas de persistance
     """
     # 1. Extraire et fetch les cartes Scryfall (+ rulings)
     clean_question, card_texts, card_infos = extract_and_fetch_cards(req.question)
 
-    # 2. Récupérer l'historique de conversation (avant la recherche RAG pour enrichir la query)
+    # 2. Récupérer l'historique de conversation
     conversation_history = ""
     recent = []
     if req.chat_id:
@@ -191,7 +197,7 @@ async def ask(
         results = vectorstore.similarity_search_with_score(enriched_query, **search_kwargs)
         relevant = [(doc, score) for doc, score in results if score < req.threshold]
 
-    # 5. Ne court-circuiter que s'il n'y a NI chunks, NI cartes, NI historique
+    # 5. Court-circuit si aucune source disponible
     if not relevant and not card_texts and not conversation_history:
         return AskResponse(
             question=req.question,
@@ -269,20 +275,18 @@ Answer:"""
 
     answer = llm.invoke(prompt)
 
-    # 7. Persister les messages en MongoDB
+    # 7. Persistance selon le contexte (authentifié > invité > anonyme)
     response_chat_id = req.chat_id
-    if user_id:
-        try:
+    try:
+        if user_id:
+            # ── Utilisateur authentifié ──────────────────────────────
             if not response_chat_id:
-                # Créer un nouveau chat
                 chat = await create_chat(
                     user_id=user_id,
                     game_id=req.game_id or "unknown",
                     title=req.question[:50],
                 )
                 response_chat_id = chat["id"]
-
-            # Sauvegarder la question et la réponse
             await add_message(response_chat_id, "user", req.question)
             await add_message(
                 response_chat_id,
@@ -291,8 +295,29 @@ Answer:"""
                 cards=[c.model_dump() for c in card_infos],
                 chunks_used=len(relevant),
             )
-        except Exception as e:
-            print(f"[CHAT] Erreur persistance: {e}")
+
+        elif req.session_id:
+            # ── Invité avec session ──────────────────────────────────
+            if not response_chat_id:
+                chat = await create_chat(
+                    session_id=req.session_id,
+                    game_id=req.game_id or "unknown",
+                    title=req.question[:50],
+                )
+                response_chat_id = chat["id"]
+            await add_message(response_chat_id, "user", req.question)
+            await add_message(
+                response_chat_id,
+                "assistant",
+                answer,
+                cards=[c.model_dump() for c in card_infos],
+                chunks_used=len(relevant),
+            )
+
+        # Sinon (anonyme sans session_id) : on ne persiste rien
+
+    except Exception as e:
+        print(f"[CHAT] Erreur persistance: {e}")
 
     return AskResponse(
         question=req.question,
@@ -302,6 +327,26 @@ Answer:"""
         cards=card_infos,
         chat_id=response_chat_id,
     )
+
+
+@app.post("/chats/migrate", status_code=200)
+async def migrate_guest_chats(
+    req: MigrateRequest,
+    user_id: str = Depends(get_optional_user_id),
+):
+    """
+    Migre les chats invités vers le compte de l'utilisateur connecté.
+    À appeler depuis le frontend juste après la connexion / inscription OAuth
+    si un session_id était actif côté client.
+    """
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentification requise.")
+    if not req.session_id:
+        raise HTTPException(status_code=400, detail="session_id manquant.")
+
+    from chat.mongo_service import migrate_guest_chats as _migrate
+    count = await _migrate(session_id=req.session_id, user_id=user_id)
+    return {"migrated": count}
 
 
 @app.post("/upload", response_model=UploadResponse)
@@ -360,6 +405,7 @@ def health():
         "default_model": DEFAULT_MODEL_ID,
         "cached_providers": len(_PROVIDER_CACHE),
     }
+
 
 @app.get("/models")
 def list_models():
