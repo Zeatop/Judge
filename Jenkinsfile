@@ -51,27 +51,10 @@ pipeline {
             }
         }
 
-        stage('Stop Judge for Indexing') {
-            when { expression { params.REINDEX } }
-            steps {
-                sh "kubectl scale deployment judge --replicas=0"
-                sh "kubectl rollout status deployment/judge --timeout=60s"
-            }
-        }
-
-        stage('Index ChromaDB') {
-            when { expression { params.REINDEX } }
-            steps {
-                sh """
-                    kubectl delete job judge-indexer --ignore-not-found
-                    sed -i 's|${REGISTRY}/${IMAGE}:latest|${REGISTRY}/${IMAGE}:${TAG}|' k8s/indexer-job.yaml
-                    kubectl apply -f k8s/indexer-job.yaml
-                    kubectl wait --for=condition=complete job/judge-indexer --timeout=600s
-                """
-            }
-        }
-
-        stage('Deploy to K8s') {
+        // ── Le secret est mis à jour AVANT l'indexation, pour que ──────
+        // ── le job indexer puisse lire les bonnes valeurs (notamment ──
+        // ── SKIPPED_MTG_PAGES et ANTHROPIC_API_KEY pour Claude). ──────
+        stage('Update K8s Secret') {
             steps {
                 withCredentials([
                     string(credentialsId: 'JUDGE_DATABASE_URL', variable: 'DATABASE_URL'),
@@ -108,9 +91,33 @@ pipeline {
                             --from-literal=SKIPPED_MTG_PAGES="\$SKIPPED_MTG_PAGES" \
                             --from-literal=POSTHOG_API_KEY="\$POSTHOG_API_KEY" \
                             --from-literal=POSTHOG_HOST="\$POSTHOG_HOST"
-
                     """
                 }
+            }
+        }
+
+        stage('Stop Judge for Indexing') {
+            when { expression { params.REINDEX } }
+            steps {
+                sh "kubectl scale deployment judge --replicas=0"
+                sh "kubectl rollout status deployment/judge --timeout=60s"
+            }
+        }
+
+        stage('Index ChromaDB') {
+            when { expression { params.REINDEX } }
+            steps {
+                sh """
+                    kubectl delete job judge-indexer --ignore-not-found
+                    sed -i 's|${REGISTRY}/${IMAGE}:latest|${REGISTRY}/${IMAGE}:${TAG}|' k8s/indexer-job.yaml
+                    kubectl apply -f k8s/indexer-job.yaml
+                    kubectl wait --for=condition=complete job/judge-indexer --timeout=1800s
+                """
+            }
+        }
+
+        stage('Deploy to K8s') {
+            steps {
                 sh "sed -i 's|${REGISTRY}/${IMAGE}:latest|${REGISTRY}/${IMAGE}:${TAG}|' k8s/deployment.yaml"
                 sh "kubectl apply -f k8s/deployment.yaml"
                 sh "kubectl rollout status deployment/judge --timeout=180s"
