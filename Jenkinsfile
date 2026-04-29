@@ -106,8 +106,8 @@ pipeline {
                             --from-literal=DISCORD_JUDGE_CLIENT_SECRET="\$DISCORD_CLIENT_SECRET" \
                             --from-literal=ADMIN_EMAILS="\$ADMIN_EMAILS" \
                             --from-literal=SKIPPED_MTG_PAGES="\$SKIPPED_MTG_PAGES" \
-                            --from-literal=VITE_POSTHOG_KEY="\$POSTHOG_KEY" \
-                            --from-literal=VITE_POSTHOG_HOST="\$PPOSTHOG_HOST"
+                            --from-literal=POSTHOG_API_KEY="\$POSTHOG_API_KEY" \
+                            --from-literal=POSTHOG_HOST="\$POSTHOG_HOST"
 
                     """
                 }

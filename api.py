@@ -77,7 +77,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     await close_mongo()
-    shutdown_posthog
+    shutdown_posthog()
 
 
 # ── Dossier d'upload ─────────────────────────────────────────────────
@@ -177,7 +177,8 @@ async def ask(
     user_id: str | None = Depends(get_optional_user_id),
 ):
     started_at = time.perf_counter()
-    distinct_id = user_id or req.session_id
+    distinct_id = user_id or req.session_id or f"anon-{uuid.uuid4()}"
+    is_anonymous = not user_id and not req.session_id
 
     # Variables tracées (initialisées pour le bloc finally)
     error_type: str | None = None
@@ -407,6 +408,7 @@ Answer:"""
                     "chunks_used": len(relevant),
                     "input_tokens_est": input_tokens_est,
                     "output_tokens_est": output_tokens_est,
+                    "is_anonymous": is_anonymous,
                     "cards_returned": len(card_infos),
                     "question_length": len(req.question),
                     "answer_length": len(answer),
