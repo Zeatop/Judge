@@ -4,7 +4,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 ARG SKIPPED_MTG_PAGES
-ENV SKIPPED_MTG_PAGES=$VITE_JUDGE_API_URL
+ENV SKIPPED_MTG_PAGES=$SKIPPED_MTG_PAGES
 
 # Dépendances système pour psycopg2
 RUN apt-get update && apt-get install -y --no-install-recommends \
