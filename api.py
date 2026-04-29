@@ -27,6 +27,7 @@ from auth import auth_router, init_db as init_auth_db, get_admin_user
 from auth.config import AUTH_SECRET_KEY
 from auth.jwt import get_optional_user_id
 from auth.models import User
+import uuid
 
 # ── Chat ────────────────────────────────────────────────────────────
 from chat import chat_router, connect_mongo, close_mongo
