@@ -148,7 +148,8 @@ Retourne UNIQUEMENT le texte reformaté, sans introduction ni commentaire.
     # ── Path MTG (inchangé) ─────────────────────────────────────────
 
     def _split_mtg(self, documents):
-        filtered = [doc for doc in documents if doc.metadata.get("page", 0) >= 4]
+        skipped_pages = int(os.getenv("SKIPPED_MTG_PAGES", 0))
+        filtered = [doc for doc in documents if doc.metadata.get("page", 0) >= skipped_pages]
 
         full_text = "\n".join([doc.page_content for doc in filtered])
 

@@ -83,6 +83,9 @@ pipeline {
                     string(credentialsId: 'DISCORD_JUDGE_CLIENT_ID', variable: 'DISCORD_CLIENT_ID'),
                     string(credentialsId: 'DISCORD_JUDGE_CLIENT_SECRET', variable: 'DISCORD_CLIENT_SECRET'),
                     string(credentialsId: 'ADMIN_EMAILS', variable: 'ADMIN_EMAILS'),
+                    string(credentialsId: 'SKIPPED_MTG_PAGES', variable: 'SKIPPED_MTG_PAGES'),
+                    string(credentialsId: 'VITE_POSTHOG_KEY', variable: 'POSTHOG_API_KEY'),
+                    string(credentialsId: 'VITE_POSTHOG_HOST', variable: 'POSTHOG_HOST')
                 ]) {
                     sh """
                         kubectl delete secret judge-secrets --ignore-not-found
@@ -101,7 +104,11 @@ pipeline {
                             --from-literal=GOOGLE_JUDGE_CLIENT_SECRET="\$GOOGLE_CLIENT_SECRET" \
                             --from-literal=DISCORD_JUDGE_CLIENT_ID="\$DISCORD_CLIENT_ID" \
                             --from-literal=DISCORD_JUDGE_CLIENT_SECRET="\$DISCORD_CLIENT_SECRET" \
-                            --from-literal=ADMIN_EMAILS="\$ADMIN_EMAILS"
+                            --from-literal=ADMIN_EMAILS="\$ADMIN_EMAILS" \
+                            --from-literal=SKIPPED_MTG_PAGES="\$SKIPPED_MTG_PAGES" \
+                            --from-literal=VITE_POSTHOG_KEY="\$POSTHOG_KEY" \
+                            --from-literal=VITE_POSTHOG_HOST="\$PPOSTHOG_HOST"
+
                     """
                 }
                 sh "sed -i 's|${REGISTRY}/${IMAGE}:latest|${REGISTRY}/${IMAGE}:${TAG}|' k8s/deployment.yaml"

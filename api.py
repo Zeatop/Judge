@@ -19,6 +19,8 @@ from pdfProcessor import PDFProcessor
 from llm_provider import get_provider
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+import time
+from posthog_client import get_posthog, shutdown_posthog
 
 # ── Auth ────────────────────────────────────────────────────────────
 from auth import auth_router, init_db as init_auth_db, get_admin_user
@@ -69,11 +71,13 @@ init_auth_db()
 @app.on_event("startup")
 async def startup():
     await connect_mongo()
+    get_posthog()
 
 
 @app.on_event("shutdown")
 async def shutdown():
     await close_mongo()
+    shutdown_posthog
 
 
 # ── Dossier d'upload ─────────────────────────────────────────────────
@@ -172,97 +176,103 @@ async def ask(
     req: AskRequest,
     user_id: str | None = Depends(get_optional_user_id),
 ):
-    """
-    Pose une question sur les règles d'un jeu.
-    Pour MTG, utilise [[nom de carte]] pour inclure automatiquement le texte Oracle + rulings.
+    started_at = time.perf_counter()
+    distinct_id = user_id or req.session_id
 
-    Persistance selon le contexte :
-      - Authentifié (user_id présent)  → chat lié au compte, historique permanent
-      - Invité (session_id présent)    → chat lié à la session, TTL 30 jours
-      - Anonyme (aucun des deux)       → pas de persistance
-    """
-    # 1. Extraire et fetch les cartes Scryfall (+ rulings)
-    clean_question, card_texts, card_infos = extract_and_fetch_cards(req.question)
+    # Variables tracées (initialisées pour le bloc finally)
+    error_type: str | None = None
+    answer = ""
+    response_chat_id = req.chat_id
+    relevant: list = []
+    card_infos: list[CardInfo] = []
+    clean_question = req.question
+    model_id = req.model_id or DEFAULT_MODEL_ID
+    prompt_chars = 0
 
-    # 2. Récupérer l'historique de conversation
-    conversation_history = ""
-    recent = []
-    if req.chat_id:
-        recent = await get_recent_exchanges(req.chat_id, n=3)
-        if recent:
-            lines = []
-            for msg in recent:
-                role_label = "User" if msg["role"] == "user" else "Assistant"
-                lines.append(f"{role_label}: {msg['content']}")
-            conversation_history = "\n".join(lines)
+    try:
+        # 1. Extraire et fetch les cartes Scryfall (+ rulings)
+        clean_question, card_texts, card_infos = extract_and_fetch_cards(req.question)
 
-    # 3. Recherche dans ChromaDB
-    search_query = clean_question
-    if card_texts:
-        keywords = []
-        for ct in card_texts:
-            for kw in [
-                "target", "return", "untap", "sacrifice", "counter",
-                "destroy", "exile", "draw", "discard", "damage",
-                "tap", "creature", "spell", "stack", "resolve",
-                "copy", "trigger", "cast", "magecraft", "attack",
-                "instant", "sorcery", "ability", "permanent",
-            ]:
-                if kw in ct.lower():
-                    keywords.append(kw)
-        if keywords:
-            search_query += " " + " ".join(set(keywords))
+        # 2. Récupérer l'historique de conversation
+        conversation_history = ""
+        recent = []
+        if req.chat_id:
+            recent = await get_recent_exchanges(req.chat_id, n=3)
+            if recent:
+                lines = []
+                for msg in recent:
+                    role_label = "User" if msg["role"] == "user" else "Assistant"
+                    lines.append(f"{role_label}: {msg['content']}")
+                conversation_history = "\n".join(lines)
 
-    search_kwargs = {"k": req.k}
-    if req.game_id:
-        search_kwargs["filter"] = {"game_id": req.game_id}
+        # 3. Recherche dans ChromaDB
+        search_query = clean_question
+        if card_texts:
+            keywords = []
+            for ct in card_texts:
+                for kw in [
+                    "target", "return", "untap", "sacrifice", "counter",
+                    "destroy", "exile", "draw", "discard", "damage",
+                    "tap", "creature", "spell", "stack", "resolve",
+                    "copy", "trigger", "cast", "magecraft", "attack",
+                    "instant", "sorcery", "ability", "permanent",
+                ]:
+                    if kw in ct.lower():
+                        keywords.append(kw)
+            if keywords:
+                search_query += " " + " ".join(set(keywords))
 
-    results = vectorstore.similarity_search_with_score(search_query, **search_kwargs)
-    relevant = [(doc, score) for doc, score in results if score < req.threshold]
+        search_kwargs = {"k": req.k}
+        if req.game_id:
+            search_kwargs["filter"] = {"game_id": req.game_id}
 
-    # 4. Si aucun résultat et qu'on a un historique, relancer avec le contexte enrichi
-    if not relevant and recent:
-        history_user_texts = " ".join(
-            msg["content"] for msg in recent if msg["role"] == "user"
-        )
-        enriched_query = clean_question + " " + history_user_texts
-        results = vectorstore.similarity_search_with_score(enriched_query, **search_kwargs)
+        results = vectorstore.similarity_search_with_score(search_query, **search_kwargs)
         relevant = [(doc, score) for doc, score in results if score < req.threshold]
 
-    # 5. Court-circuit si aucune source disponible
-    if not relevant and not card_texts and not conversation_history:
-        return AskResponse(
-            question=req.question,
-            game_id=req.game_id,
-            answer="Aucune règle pertinente trouvée.",
-            chunks_used=0,
-            cards=[],
-            chat_id=req.chat_id,
-        )
+        # 4. Si aucun résultat et qu'on a un historique, relancer avec le contexte enrichi
+        if not relevant and recent:
+            history_user_texts = " ".join(
+                msg["content"] for msg in recent if msg["role"] == "user"
+            )
+            enriched_query = clean_question + " " + history_user_texts
+            results = vectorstore.similarity_search_with_score(enriched_query, **search_kwargs)
+            relevant = [(doc, score) for doc, score in results if score < req.threshold]
 
-    # 6. Construire le contexte
-    if req.game_id:
-        role = GAME_PROMPTS.get(req.game_id, DEFAULT_PROMPT)
-    else:
-        games_found = [doc.metadata.get("game_id", "") for doc, _ in relevant]
-        if games_found:
-            top_game = max(set(games_found), key=games_found.count)
-            role = GAME_PROMPTS.get(top_game, DEFAULT_PROMPT)
+        # 5. Court-circuit si aucune source disponible
+        if not relevant and not card_texts and not conversation_history:
+            answer = "Aucune règle pertinente trouvée."
+            return AskResponse(
+                question=req.question,
+                game_id=req.game_id,
+                answer=answer,
+                chunks_used=0,
+                cards=[],
+                chat_id=req.chat_id,
+            )
+
+        # 6. Construire le contexte
+        if req.game_id:
+            role = GAME_PROMPTS.get(req.game_id, DEFAULT_PROMPT)
         else:
-            role = DEFAULT_PROMPT
+            games_found = [doc.metadata.get("game_id", "") for doc, _ in relevant]
+            if games_found:
+                top_game = max(set(games_found), key=games_found.count)
+                role = GAME_PROMPTS.get(top_game, DEFAULT_PROMPT)
+            else:
+                role = DEFAULT_PROMPT
 
-    rules_context = "\n\n".join([doc.page_content for doc, _ in relevant])
+        rules_context = "\n\n".join([doc.page_content for doc, _ in relevant])
 
-    cards_context = ""
-    if card_texts:
-        cards_context = (
-            "\n\n=== CARD ORACLE TEXTS & OFFICIAL RULINGS (from Scryfall) ===\n\n"
-            + "\n\n".join(card_texts)
-        )
+        cards_context = ""
+        if card_texts:
+            cards_context = (
+                "\n\n=== CARD ORACLE TEXTS & OFFICIAL RULINGS (from Scryfall) ===\n\n"
+                + "\n\n".join(card_texts)
+            )
 
-    history_block = ""
-    if conversation_history:
-        history_block = f"""
+        history_block = ""
+        if conversation_history:
+            history_block = f"""
 
 === CONVERSATION HISTORY (last exchanges) ===
 {conversation_history}
@@ -270,7 +280,7 @@ async def ask(
 
 Use this history to understand follow-up questions. If the user refers to "it", "that card", "the spell", "this", etc., resolve the reference from the history above. The user's new question is a continuation of this conversation."""
 
-    prompt = f"""{role}
+        prompt = f"""{role}
 You have THREE sources of information below:
 1. RULES: Official game rules from the rulebook.
 2. CARD TEXTS: The Oracle text of specific cards mentioned in the question.
@@ -299,67 +309,111 @@ Rules:
 Question: {clean_question}
 Answer:"""
 
-    model_id = req.model_id or DEFAULT_MODEL_ID
-    if model_id not in MODELS_BY_ID:
-        raise HTTPException(status_code=400, detail=f"Modèle inconnu : {model_id}")
-    model_cfg = MODELS_BY_ID[model_id]
-    llm = get_cached_provider(model_cfg["provider"], model_cfg["model"])
+        prompt_chars = len(prompt)
 
-    answer = llm.invoke(prompt)
+        if model_id not in MODELS_BY_ID:
+            raise HTTPException(status_code=400, detail=f"Modèle inconnu : {model_id}")
+        model_cfg = MODELS_BY_ID[model_id]
+        llm = get_cached_provider(model_cfg["provider"], model_cfg["model"])
 
-    # 7. Persistance selon le contexte (authentifié > invité > anonyme)
-    response_chat_id = req.chat_id
-    try:
-        if user_id:
-            # ── Utilisateur authentifié ──────────────────────────────
-            if not response_chat_id:
-                chat = await create_chat(
-                    user_id=user_id,
-                    game_id=req.game_id or "unknown",
-                    title=req.question[:50],
+        answer = llm.invoke(prompt)
+
+        # 7. Persistance selon le contexte (authentifié > invité > anonyme)
+        try:
+            if user_id:
+                if not response_chat_id:
+                    chat = await create_chat(
+                        user_id=user_id,
+                        game_id=req.game_id or "unknown",
+                        title=req.question[:50],
+                    )
+                    response_chat_id = chat["id"]
+                await add_message(response_chat_id, "user", req.question)
+                await add_message(
+                    response_chat_id,
+                    "assistant",
+                    answer,
+                    cards=[c.model_dump() for c in card_infos],
+                    chunks_used=len(relevant),
                 )
-                response_chat_id = chat["id"]
-            await add_message(response_chat_id, "user", req.question)
-            await add_message(
-                response_chat_id,
-                "assistant",
-                answer,
-                cards=[c.model_dump() for c in card_infos],
-                chunks_used=len(relevant),
-            )
 
-        elif req.session_id:
-            # ── Invité avec session ──────────────────────────────────
-            if not response_chat_id:
-                chat = await create_chat(
-                    session_id=req.session_id,
-                    game_id=req.game_id or "unknown",
-                    title=req.question[:50],
+            elif req.session_id:
+                if not response_chat_id:
+                    chat = await create_chat(
+                        session_id=req.session_id,
+                        game_id=req.game_id or "unknown",
+                        title=req.question[:50],
+                    )
+                    response_chat_id = chat["id"]
+                await add_message(response_chat_id, "user", req.question)
+                await add_message(
+                    response_chat_id,
+                    "assistant",
+                    answer,
+                    cards=[c.model_dump() for c in card_infos],
+                    chunks_used=len(relevant),
                 )
-                response_chat_id = chat["id"]
-            await add_message(response_chat_id, "user", req.question)
-            await add_message(
-                response_chat_id,
-                "assistant",
-                answer,
-                cards=[c.model_dump() for c in card_infos],
-                chunks_used=len(relevant),
-            )
 
-        # Sinon (anonyme sans session_id) : on ne persiste rien
+        except Exception as e:
+            print(f"[CHAT] Erreur persistance: {e}")
 
+        return AskResponse(
+            question=req.question,
+            game_id=req.game_id,
+            answer=answer,
+            chunks_used=len(relevant),
+            cards=card_infos,
+            chat_id=response_chat_id,
+        )
+
+    except HTTPException:
+        # 4xx volontaires : pas une vraie erreur applicative, on les relance sans capture_exception
+        error_type = "HTTPException"
+        raise
     except Exception as e:
-        print(f"[CHAT] Erreur persistance: {e}")
+        error_type = type(e).__name__
+        ph = get_posthog()
+        if ph and distinct_id:
+            ph.capture_exception(
+                e,
+                distinct_id=distinct_id,
+                properties={
+                    "context": "rag_query",
+                    "game_id": req.game_id,
+                    "model_id": model_id,
+                    "is_guest": user_id is None,
+                },
+            )
+        raise
 
-    return AskResponse(
-        question=req.question,
-        game_id=req.game_id,
-        answer=answer,
-        chunks_used=len(relevant),
-        cards=card_infos,
-        chat_id=response_chat_id,
-    )
+    finally:
+        latency_ms = int((time.perf_counter() - started_at) * 1000)
+        ph = get_posthog()
+        if ph and distinct_id:
+            # Tokens estimés (cohérent avec ton benchmark.py : ~4 chars/token)
+            input_tokens_est = max(1, prompt_chars // 4) if prompt_chars else 0
+            output_tokens_est = max(1, len(answer) // 4) if answer else 0
 
+            ph.capture(
+                distinct_id=distinct_id,
+                event="rag_query_completed",
+                properties={
+                    "game_id": req.game_id,
+                    "model_id": model_id,
+                    "chat_id": response_chat_id,
+                    "is_guest": user_id is None,
+                    "is_new_chat": req.chat_id is None,
+                    "latency_ms": latency_ms,
+                    "chunks_used": len(relevant),
+                    "input_tokens_est": input_tokens_est,
+                    "output_tokens_est": output_tokens_est,
+                    "cards_returned": len(card_infos),
+                    "question_length": len(req.question),
+                    "answer_length": len(answer),
+                    "success": error_type is None,
+                    "error_type": error_type,
+                },
+            )
 
 @app.post("/chats/migrate", response_model=MigrateResponse, status_code=200)
 async def migrate_guest_chats_endpoint(

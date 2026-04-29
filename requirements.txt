@@ -12,3 +12,4 @@ accelerate
 numpy
 psycopg2-binary
 sqlalchemy
+posthog>=3.0.0
