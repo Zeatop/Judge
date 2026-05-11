@@ -9,8 +9,18 @@ Usage :
 """
 
 import os
+import json as _json
 import httpx
 from abc import ABC, abstractmethod
+from typing import AsyncIterator
+
+
+def _split_prompt(prompt: str) -> tuple[str, str]:
+    """Sépare system prompt et user message sur la convention 'Question:'."""
+    if "Question:" in prompt:
+        parts = prompt.split("Question:", 1)
+        return parts[0].strip(), "Question:" + parts[1].strip()
+    return "", prompt
 
 
 class LLMProvider(ABC):
@@ -19,6 +29,11 @@ class LLMProvider(ABC):
     @abstractmethod
     def invoke(self, prompt: str) -> str:
         """Envoie un prompt et retourne la réponse texte."""
+        ...
+
+    @abstractmethod
+    async def astream(self, prompt: str) -> AsyncIterator[str]:
+        """Streame la réponse token par token (async generator)."""
         ...
 
 
@@ -32,6 +47,11 @@ class OllamaProvider(LLMProvider):
 
     def invoke(self, prompt: str) -> str:
         return self.llm.invoke(prompt)
+
+    async def astream(self, prompt: str) -> AsyncIterator[str]:
+        async for chunk in self.llm.astream(prompt):
+            if chunk:
+                yield chunk
 
     def __repr__(self):
         return f"OllamaProvider(model={self.model})"
@@ -124,6 +144,42 @@ class ClaudeProvider(LLMProvider):
 
         raise RuntimeError(f"Claude API : échec après {max_retries} tentatives. Dernière erreur : {last_error}")
 
+    async def astream(self, prompt: str) -> AsyncIterator[str]:
+        system_text, user_text = _split_prompt(prompt)
+        payload = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "messages": [{"role": "user", "content": user_text}],
+            "stream": True,
+        }
+        if system_text:
+            payload["system"] = system_text
+
+        headers = {
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with client.stream("POST", self.API_URL, headers=headers, json=payload) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    data_str = line[5:].strip()
+                    if not data_str:
+                        continue
+                    try:
+                        data = _json.loads(data_str)
+                        if data.get("type") == "content_block_delta":
+                            text = data.get("delta", {}).get("text", "")
+                            if text:
+                                yield text
+                    except _json.JSONDecodeError:
+                        pass
+
     def __repr__(self):
         return f"ClaudeProvider(model={self.model})"
 
@@ -215,6 +271,44 @@ class DeepSeekProvider(LLMProvider):
             raise RuntimeError(f"DeepSeek API error {resp.status_code}: {resp.text}")
 
         raise RuntimeError(f"DeepSeek API : échec après {max_retries} tentatives. Dernière erreur : {last_error}")
+
+    async def astream(self, prompt: str) -> AsyncIterator[str]:
+        system_text, user_text = _split_prompt(prompt)
+        messages = []
+        if system_text:
+            messages.append({"role": "system", "content": system_text})
+        messages.append({"role": "user", "content": user_text})
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": self.max_tokens,
+            "stream": True,
+        }
+        if self.model not in self.REASONING_MODELS:
+            payload["temperature"] = self.temperature
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with client.stream("POST", self.api_url, headers=headers, json=payload) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    data_str = line[5:].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        data = _json.loads(data_str)
+                        content = (data.get("choices") or [{}])[0].get("delta", {}).get("content") or ""
+                        if content:
+                            yield content
+                    except _json.JSONDecodeError:
+                        pass
 
     def __repr__(self):
         return f"DeepSeekProvider(model={self.model})"

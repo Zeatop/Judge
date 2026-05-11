@@ -10,9 +10,12 @@ Usage :
 """
 
 import os
+import json
+import uuid
 import hashlib
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from db import vectorstore
 from pdfProcessor import PDFProcessor
@@ -417,6 +420,217 @@ Answer:"""
                     "error_type": error_type,
                 },
             )
+
+@app.post("/ask/stream")
+async def ask_stream(
+    req: AskRequest,
+    user_id: str | None = Depends(get_optional_user_id),
+):
+    """
+    Même logique que /ask, mais streame la réponse token par token via SSE.
+    Le client écoute avec EventSource ou fetch+ReadableStream.
+    Events :
+      data: {"type": "chunk", "text": "..."}   — token(s) reçus
+      data: {"type": "done",  "chat_id": "...", "cards": [...], "chunks_used": N}
+      data: {"type": "error", "message": "..."}
+    """
+    started_at = time.perf_counter()
+    distinct_id = user_id or req.session_id or f"anon-{uuid.uuid4()}"
+    model_id = req.model_id or DEFAULT_MODEL_ID
+
+    # ── Validation préalable (avant de commencer le stream) ──────────
+    if model_id not in MODELS_BY_ID:
+        raise HTTPException(status_code=400, detail=f"Modèle inconnu : {model_id}")
+
+    # 1. Cartes Scryfall
+    clean_question, card_texts, card_infos = extract_and_fetch_cards(req.question)
+
+    # 2. Historique de conversation
+    conversation_history = ""
+    recent = []
+    if req.chat_id:
+        recent = await get_recent_exchanges(req.chat_id, n=3)
+        if recent:
+            lines = [
+                f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+                for m in recent
+            ]
+            conversation_history = "\n".join(lines)
+
+    # 3. Recherche ChromaDB
+    search_query = clean_question
+    if card_texts:
+        keywords = [
+            kw for ct in card_texts for kw in [
+                "target", "return", "untap", "sacrifice", "counter",
+                "destroy", "exile", "draw", "discard", "damage",
+                "tap", "creature", "spell", "stack", "resolve",
+                "copy", "trigger", "cast", "magecraft", "attack",
+                "instant", "sorcery", "ability", "permanent",
+            ] if kw in ct.lower()
+        ]
+        if keywords:
+            search_query += " " + " ".join(set(keywords))
+
+    search_kwargs = {"k": req.k}
+    if req.game_id:
+        search_kwargs["filter"] = {"game_id": req.game_id}
+
+    results = vectorstore.similarity_search_with_score(search_query, **search_kwargs)
+    relevant = [(doc, score) for doc, score in results if score < req.threshold]
+
+    if not relevant and recent:
+        history_user_texts = " ".join(m["content"] for m in recent if m["role"] == "user")
+        results = vectorstore.similarity_search_with_score(
+            clean_question + " " + history_user_texts, **search_kwargs
+        )
+        relevant = [(doc, score) for doc, score in results if score < req.threshold]
+
+    # 4. Prompt
+    if req.game_id:
+        role = GAME_PROMPTS.get(req.game_id, DEFAULT_PROMPT)
+    else:
+        games_found = [doc.metadata.get("game_id", "") for doc, _ in relevant]
+        top_game = max(set(games_found), key=games_found.count) if games_found else None
+        role = GAME_PROMPTS.get(top_game, DEFAULT_PROMPT) if top_game else DEFAULT_PROMPT
+
+    rules_context = "\n\n".join([doc.page_content for doc, _ in relevant])
+    cards_context = (
+        "\n\n=== CARD ORACLE TEXTS & OFFICIAL RULINGS (from Scryfall) ===\n\n"
+        + "\n\n".join(card_texts)
+    ) if card_texts else ""
+    history_block = f"""
+
+=== CONVERSATION HISTORY (last exchanges) ===
+{conversation_history}
+=== END HISTORY ===
+
+Use this history to understand follow-up questions.""" if conversation_history else ""
+
+    prompt = f"""{role}
+You have THREE sources of information below:
+1. RULES: Official game rules from the rulebook.
+2. CARD TEXTS: The Oracle text of specific cards mentioned in the question.
+3. OFFICIAL RULINGS: Clarifications from Wizards of the Coast on how specific cards work.
+
+INSTRUCTIONS:
+- Combine ALL sources to answer: use CARD TEXTS to understand what each card does,
+  check OFFICIAL RULINGS for clarifications on interactions, then apply RULES.
+- Think step by step:
+  a) List the Oracle text of each card involved.
+  b) Check if any official rulings clarify the interaction being asked about.
+  c) Identify EVERY event that could trigger an ability (casting, copying, entering the battlefield...).
+  d) List each triggered ability separately and what causes it.
+  e) Apply any "additional trigger" or "double trigger" effects (like Veyran's static ability) to EACH individual trigger.
+  f) Count the total explicitly before giving the final answer.
+- Do NOT say "not in the rules" if the rules cover the relevant mechanic.
+- Do NOT invent or reference rules that are not provided below.
+- Cite the exact rule number(s) you used.
+- If no rules are provided but conversation history contains enough context to answer, use the history.
+{history_block}
+
+Rules:
+{rules_context}
+{cards_context}
+
+Question: {clean_question}
+Answer:"""
+
+    model_cfg = MODELS_BY_ID[model_id]
+    llm = get_cached_provider(model_cfg["provider"], model_cfg["model"])
+    response_chat_id = req.chat_id
+
+    async def generate():
+        nonlocal response_chat_id
+        answer_parts: list[str] = []
+        error_type: str | None = None
+
+        # Court-circuit si aucune source
+        if not relevant and not card_texts and not conversation_history:
+            msg = "Aucune règle pertinente trouvée."
+            yield f"data: {json.dumps({'type': 'chunk', 'text': msg})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'chat_id': req.chat_id, 'cards': [], 'chunks_used': 0})}\n\n"
+            return
+
+        try:
+            async for chunk in llm.astream(prompt):
+                answer_parts.append(chunk)
+                yield f"data: {json.dumps({'type': 'chunk', 'text': chunk})}\n\n"
+        except Exception as e:
+            error_type = type(e).__name__
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            return
+
+        answer = "".join(answer_parts)
+
+        # Persistance
+        try:
+            if user_id:
+                if not response_chat_id:
+                    chat = await create_chat(
+                        user_id=user_id,
+                        game_id=req.game_id or "unknown",
+                        title=req.question[:50],
+                    )
+                    response_chat_id = chat["id"]
+                await add_message(response_chat_id, "user", req.question)
+                await add_message(
+                    response_chat_id, "assistant", answer,
+                    cards=[c.model_dump() for c in card_infos],
+                    chunks_used=len(relevant),
+                )
+            elif req.session_id:
+                if not response_chat_id:
+                    chat = await create_chat(
+                        session_id=req.session_id,
+                        game_id=req.game_id or "unknown",
+                        title=req.question[:50],
+                    )
+                    response_chat_id = chat["id"]
+                await add_message(response_chat_id, "user", req.question)
+                await add_message(
+                    response_chat_id, "assistant", answer,
+                    cards=[c.model_dump() for c in card_infos],
+                    chunks_used=len(relevant),
+                )
+        except Exception as e:
+            print(f"[CHAT] Erreur persistance stream: {e}")
+
+        yield f"data: {json.dumps({'type': 'done', 'chat_id': response_chat_id, 'cards': [c.model_dump() for c in card_infos], 'chunks_used': len(relevant)})}\n\n"
+
+        # PostHog
+        latency_ms = int((time.perf_counter() - started_at) * 1000)
+        ph = get_posthog()
+        if ph and distinct_id:
+            ph.capture(
+                distinct_id=distinct_id,
+                event="rag_query_completed",
+                properties={
+                    "game_id": req.game_id,
+                    "model_id": model_id,
+                    "chat_id": response_chat_id,
+                    "is_guest": user_id is None,
+                    "is_new_chat": req.chat_id is None,
+                    "latency_ms": latency_ms,
+                    "chunks_used": len(relevant),
+                    "input_tokens_est": max(1, len(prompt) // 4),
+                    "output_tokens_est": max(1, len(answer) // 4) if answer else 0,
+                    "is_anonymous": not user_id and not req.session_id,
+                    "cards_returned": len(card_infos),
+                    "question_length": len(req.question),
+                    "answer_length": len(answer),
+                    "success": error_type is None,
+                    "error_type": error_type,
+                    "streaming": True,
+                },
+            )
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
 
 @app.post("/chats/migrate", response_model=MigrateResponse, status_code=200)
 async def migrate_guest_chats_endpoint(
