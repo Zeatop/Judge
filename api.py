@@ -560,7 +560,7 @@ Answer:"""
         if not relevant and not card_texts and not conversation_history:
             msg = "Aucune règle pertinente trouvée."
             yield f"data: {json.dumps({'type': 'chunk', 'text': msg})}\n\n"
-            yield f"data: {json.dumps({'type': 'done', 'chat_id': req.chat_id, 'cards': [], 'chunks_used': 0})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'chat_id': req.chat_id, 'cards': [], 'chunks_used': 0, 'credits_remaining': remaining})}\n\n"
             return
 
         try:
@@ -607,7 +607,7 @@ Answer:"""
         except Exception as e:
             print(f"[CHAT] Erreur persistance stream: {e}")
 
-        yield f"data: {json.dumps({'type': 'done', 'chat_id': response_chat_id, 'cards': [c.model_dump() for c in card_infos], 'chunks_used': len(relevant)})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'chat_id': response_chat_id, 'cards': [c.model_dump() for c in card_infos], 'chunks_used': len(relevant), 'credits_remaining': remaining})}\n\n"
 
         # PostHog
         latency_ms = int((time.perf_counter() - started_at) * 1000)

@@ -46,34 +46,16 @@ def _seconds_until_paris_midnight() -> int:
 
 def get_client_ip(request: Request) -> str:
     """
-    IP du client. Derrière Traefik (k3s), X-Forwarded-For contient l'IP réelle
-    en premier, à condition que externalTrafficPolicy=Local soit posé sur le
-    service Traefik (c'est ton cas) pour préserver l'IP source.
+    IP du client derrière Traefik (k3s).
 
-    ATTENTION : ce header est spoofable si le reverse proxy ne le réécrit pas.
-    Traefik en config k3s standard écrase le XFF entrant avec la vraie IP TCP
-    source, donc tu es normalement protégé — à confirmer via le log ci-dessous.
+    Chaîne validée : Client → Traefik (externalTrafficPolicy=Local, écrase le
+    XFF entrant) → service judge:8000. Un seul proxy, donc le premier élément
+    du X-Forwarded-For est l'IP réelle du client et n'est pas spoofable.
     """
     xff = request.headers.get("x-forwarded-for")
-
-    # ── DEBUG TEMPORAIRE — à retirer après la vérification 4G ──────────
-    # Teste avec une requête /ask depuis ton téléphone en 4G, puis :
-    #   kubectl logs deployment/judge | grep RATE_LIMIT
-    # Tu dois voir ton IP publique mobile dans XFF. Si tu vois une IP privée
-    # (10.x / 172.x) ou toujours la même quelle que soit la source, on corrige.
-    print(
-        f"[RATE_LIMIT][DEBUG] "
-        f"XFF={xff!r} "
-        f"client.host={request.client.host if request.client else None!r} "
-        f"X-Real-IP={request.headers.get('x-real-ip')!r} "
-        f"CF-Connecting-IP={request.headers.get('cf-connecting-ip')!r}"
-    )
-    # ───────────────────────────────────────────────────────────────────
-
     if xff:
         return xff.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
-
 
 async def check_and_consume_quota(
     user_id: str | None,
