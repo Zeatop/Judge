@@ -14,7 +14,7 @@ import json
 import uuid
 import hashlib
 import shutil
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from db import vectorstore
@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 import time
 from posthog_client import get_posthog, shutdown_posthog
+from chat.rate_limit import check_and_consume_quota
 
 # ── Auth ────────────────────────────────────────────────────────────
 from auth import auth_router, init_db as init_auth_db, get_admin_user
@@ -178,6 +179,7 @@ def _format_chat_brief(chat: dict) -> ChatBrief:
 @app.post("/ask", response_model=AskResponse)
 async def ask(
     req: AskRequest,
+    request: Request,
     user_id: str | None = Depends(get_optional_user_id),
 ):
     started_at = time.perf_counter()
@@ -193,6 +195,13 @@ async def ask(
     clean_question = req.question
     model_id = req.model_id or DEFAULT_MODEL_ID
     prompt_chars = 0
+
+    # ── Validation modèle AVANT de consommer un crédit (pas de quota perdu sur une 400) ──
+    if model_id not in MODELS_BY_ID:
+        raise HTTPException(status_code=400, detail=f"Modèle inconnu : {model_id}")
+
+    # ── Rate limit : AVANT Scryfall, ChromaDB et le LLM ──
+    remaining = await check_and_consume_quota(user_id, request)
 
     try:
         # 1. Extraire et fetch les cartes Scryfall (+ rulings)
@@ -316,8 +325,6 @@ Answer:"""
 
         prompt_chars = len(prompt)
 
-        if model_id not in MODELS_BY_ID:
-            raise HTTPException(status_code=400, detail=f"Modèle inconnu : {model_id}")
         model_cfg = MODELS_BY_ID[model_id]
         llm = get_cached_provider(model_cfg["provider"], model_cfg["model"])
 
@@ -424,6 +431,7 @@ Answer:"""
 @app.post("/ask/stream")
 async def ask_stream(
     req: AskRequest,
+    request: Request,
     user_id: str | None = Depends(get_optional_user_id),
 ):
     """
@@ -441,6 +449,9 @@ async def ask_stream(
     # ── Validation préalable (avant de commencer le stream) ──────────
     if model_id not in MODELS_BY_ID:
         raise HTTPException(status_code=400, detail=f"Modèle inconnu : {model_id}")
+
+    # ── Rate limit : AVANT Scryfall et le LLM (le 429/503 part en vraie réponse HTTP, pas dans le SSE) ──
+    remaining = await check_and_consume_quota(user_id, request)
 
     # 1. Cartes Scryfall
     clean_question, card_texts, card_infos = extract_and_fetch_cards(req.question)

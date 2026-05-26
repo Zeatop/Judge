@@ -34,6 +34,14 @@ async def connect_mongo():
         # ── Index messages ───────────────────────────────────────────
         await db.messages.create_index([("chat_id", 1), ("created_at", 1)])
 
+        # ── Index rate limiting ──────────────────────────────────────
+        # TTL : purge passive des compteurs journaliers de quota.
+        # Chaque document rate_limits porte un champ expires_at (~2 jours après
+        # création) ; MongoDB supprime automatiquement le document une fois la
+        # date dépassée. Sans cet index, la collection grossit indéfiniment
+        # (un document par sujet et par jour).
+        await db.rate_limits.create_index("expires_at", expireAfterSeconds=0)
+
         print(f"[MONGO] Connecté à {DB_NAME}")
     except Exception as e:
         print(f"[MONGO] Connexion échouée ({e.__class__.__name__}) — mode sans historique")
