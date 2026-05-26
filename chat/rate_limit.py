@@ -57,6 +57,44 @@ def get_client_ip(request: Request) -> str:
         return xff.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
+
+def _subject_and_limit(user_id: str | None, request: Request) -> tuple[str, int]:
+    """
+    Calcule le sujet de quota (clé Mongo) et sa limite journalière.
+    Partagé entre la consommation (/ask) et la lecture seule (/credits)
+    pour garantir qu'ils visent EXACTEMENT le même compteur.
+    """
+    if user_id:
+        return f"user:{user_id}", LIMIT_AUTHENTICATED
+    return f"ip:{get_client_ip(request)}", LIMIT_GUEST
+
+
+async def get_remaining_quota(user_id: str | None, request: Request) -> int:
+    """
+    Lecture PURE du quota restant, SANS consommer de crédit.
+    À utiliser pour l'endpoint GET /credits (affichage du badge au chargement).
+
+    Retourne le nombre de crédits restants (>= 0).
+    Si MongoDB est indisponible, retourne la limite pleine : la lecture n'est
+    pas critique, on ne bloque rien ici (contrairement à la consommation, qui
+    est fail-closed). L'utilisateur verra son vrai solde dès la 1re question.
+    """
+    db = get_db()
+    subject, limit = _subject_and_limit(user_id, request)
+    if db is None:
+        return limit
+
+    key = f"{subject}:{_today_key()}"
+    try:
+        doc = await db.rate_limits.find_one({"_id": key})
+    except PyMongoError as e:
+        print(f"[RATE_LIMIT] Lecture quota échouée ({type(e).__name__})")
+        return limit
+
+    count = doc["count"] if doc else 0
+    return max(0, limit - count)
+
+
 async def check_and_consume_quota(
     user_id: str | None,
     request: Request,
@@ -82,12 +120,7 @@ async def check_and_consume_quota(
             detail="Service temporairement indisponible. Réessaie dans un instant.",
         )
 
-    if user_id:
-        subject = f"user:{user_id}"
-        limit = LIMIT_AUTHENTICATED
-    else:
-        subject = f"ip:{get_client_ip(request)}"
-        limit = LIMIT_GUEST
+    subject, limit = _subject_and_limit(user_id, request)
 
     day = _today_key()
     key = f"{subject}:{day}"

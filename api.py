@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 import time
 from posthog_client import get_posthog, shutdown_posthog
-from chat.rate_limit import check_and_consume_quota
+from chat.rate_limit import check_and_consume_quota, get_remaining_quota
 
 # ── Auth ────────────────────────────────────────────────────────────
 from auth import auth_router, init_db as init_auth_db, get_admin_user
@@ -743,3 +743,18 @@ def list_models():
             for m in AVAILABLE_MODELS
         ],
     }
+
+
+@app.get("/credits")
+async def get_credits(
+    request: Request,
+    user_id: str | None = Depends(get_optional_user_id),
+):
+    """
+    Retourne le quota journalier restant pour l'appelant, SANS le consommer.
+    Sert au frontend à afficher le badge de crédits dès le chargement / login.
+
+    Lecture pure : aucun crédit n'est décompté par cet appel.
+    """
+    remaining = await get_remaining_quota(user_id, request)
+    return {"credits_remaining": remaining}
