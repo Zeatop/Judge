@@ -26,7 +26,7 @@ PARIS = ZoneInfo("Europe/Paris")
 
 # ── Quotas journaliers ──────────────────────────────────────────────
 LIMIT_AUTHENTICATED = 10
-LIMIT_GUEST = 5            # par IP, non authentifié
+LIMIT_GUEST = 2            # par IP, non authentifié — mur de connexion au-delà
 QUOTA_DOC_TTL_DAYS = 2     # purge des vieux compteurs
 
 
